@@ -1,5 +1,10 @@
 /* ==========================================================================
    1. VARIABLES AND THEMES
+
+   All colors, spacing, and sizes are defined here as CSS variables.
+   Change a value once and it updates everywhere it is used.
+   Dark theme values live under :root; light theme overrides live under
+   :root[data-theme="light"].
    ========================================================================== */
 
 :root {
@@ -14,8 +19,11 @@
   --space-lg: 2rem;
   --space-xl: 3rem;
   --transition-speed: 160ms;
+  /* Minimum comfortable touch-target size (tablet-friendly) */
+  --touch-target: 2.75rem; /* 44px */
 
   /* Dark theme (default) */
+  color-scheme: dark;
   --color-bg: #12161c;
   --color-bg-elevated: #1a2029;
   --color-card: #1c2330;
@@ -33,19 +41,20 @@
 
 /* Light theme: applied when <html data-theme="light"> */
 :root[data-theme="light"] {
+  color-scheme: light;
   --color-bg: #f4f6f8;
   --color-bg-elevated: #ffffff;
   --color-card: #ffffff;
   --color-card-hover: #eef2f5;
   --color-border: #dbe1e8;
   --color-text: #1b232c;
-  --color-text-muted: #5b6673;
+  --color-text-muted: #55606d;
   --color-accent: #1f8f86;
   --color-accent-strong: #147870;
   --color-accent-contrast: #ffffff;
   --shadow-card: 0 1px 4px rgba(20, 30, 40, 0.08);
   --shadow-card-hover: 0 4px 14px rgba(20, 30, 40, 0.12);
-  --focus-ring: 0 0 0 3px rgba(31, 143, 134, 0.35);
+  --focus-ring: 0 0 0 3px rgba(31, 143, 134, 0.4);
 }
 
 /* ==========================================================================
@@ -140,10 +149,15 @@ textarea:focus-visible {
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
+  min-height: 100%;
 }
 
-main.page {
-  padding-top: 0;
+/* <main> sits inside .page, which already provides the width and padding;
+   it only adds vertical rhythm between its sections. */
+.page-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
 }
 
 /* ==========================================================================
@@ -153,7 +167,7 @@ main.page {
 .site-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--space-md);
 }
@@ -161,6 +175,7 @@ main.page {
 .greeting-text {
   font-size: 1.9rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .date-text {
@@ -200,12 +215,14 @@ main.page {
 .search-input {
   flex: 1;
   min-width: 0;
+  min-height: var(--touch-target);
   background: var(--color-card);
   border: 1px solid var(--color-border);
   color: var(--color-text);
   border-radius: var(--radius-md);
   padding: 0.9rem 1.1rem;
   font-size: 1.05rem;
+  box-shadow: var(--shadow-card);
   transition: border-color var(--transition-speed) ease,
     background-color var(--transition-speed) ease;
 }
@@ -214,7 +231,8 @@ main.page {
   color: var(--color-text-muted);
 }
 
-.search-input:hover {
+.search-input:hover,
+.search-input:focus-visible {
   border-color: var(--color-accent);
 }
 
@@ -237,10 +255,12 @@ main.page {
 }
 
 .shortcut-group-title {
-  font-size: 1.05rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   margin-bottom: var(--space-sm);
-  color: var(--color-text);
+  color: var(--color-text-muted);
 }
 
 .shortcut-list {
@@ -256,7 +276,8 @@ main.page {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: 0.65rem 0.75rem;
+  min-height: var(--touch-target);
+  padding: 0.5rem 0.75rem;
   border-radius: var(--radius-sm);
   text-decoration: none;
   color: var(--color-text);
@@ -289,8 +310,13 @@ main.page {
   font-size: 0.9rem;
 }
 
+/* Long names shorten with "…" instead of stretching or breaking the card */
 .shortcut-name {
   font-size: 0.98rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shortcut-empty {
@@ -308,13 +334,16 @@ main.page {
   border-radius: var(--radius-lg);
   padding: var(--space-md);
   box-shadow: var(--shadow-card);
+  width: 100%;
   max-width: 640px;
+  margin: 0 auto; /* centered, matching the search bar above */
 }
 
 .notes-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-sm);
   margin-bottom: var(--space-sm);
 }
 
@@ -325,6 +354,7 @@ main.page {
 
 .notes-textarea {
   width: 100%;
+  min-height: 8rem;
   resize: vertical;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
@@ -348,12 +378,14 @@ main.page {
 
 .btn {
   cursor: pointer;
+  min-height: var(--touch-target);
   border: 1px solid var(--color-border);
   background: var(--color-card);
   color: var(--color-text);
   border-radius: var(--radius-sm);
-  padding: 0.65rem 1rem;
+  padding: 0.5rem 1rem;
   font-size: 0.95rem;
+  white-space: nowrap;
   transition: background-color var(--transition-speed) ease,
     border-color var(--transition-speed) ease,
     transform var(--transition-speed) ease;
@@ -384,17 +416,24 @@ main.page {
   background: transparent;
 }
 
-.btn-icon {
-  white-space: nowrap;
+/* ==========================================================================
+   9. FOOTER
+   ========================================================================== */
+
+.site-footer {
+  margin-top: auto; /* pushes the footer to the bottom on short pages */
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
 }
 
 /* ==========================================================================
-   9. RESPONSIVE RULES
+   10. RESPONSIVE RULES
    ========================================================================== */
 
-/* Tablet landscape is the primary target and already fits the base layout
-   well thanks to the flexible grid above. The rules below refine behavior
-   at the wider and narrower ends of the range. */
+/* Tablet landscape (~1280x800) is the primary target and fits the base
+   layout well thanks to the flexible grid above. The rules below refine
+   behavior at the wider and narrower ends of the range. */
 
 @media (min-width: 900px) {
   .greeting-text {
@@ -426,7 +465,7 @@ main.page {
 }
 
 /* ==========================================================================
-   10. REDUCED MOTION
+   11. REDUCED MOTION
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {

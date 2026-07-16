@@ -4,17 +4,20 @@
   This is the ONLY file you should need to edit regularly.
 
   It controls:
-    - your name and greeting
+    - your name, page title, and greeting
     - which search engine is used
     - the shortcut groups and links shown on the dashboard
-    - default theme and notes label
+    - which sections are visible
+    - whether links open in a new tab
+    - the default theme and the notes label
 
   index.html loads this file BEFORE script.js, so script.js can read
   the "homepageConfig" object defined below.
 
-  Tip: if you break the JSON-like structure below (missing comma, missing
-  quote, etc.), script.js is written to detect that and show a warning
-  instead of crashing the whole page.
+  Tip: if you break the structure below (missing comma, missing quote,
+  etc.), script.js is written to detect that and fall back to defaults
+  instead of crashing the whole page — but check the browser console
+  (F12) for warnings if something looks wrong.
 */
 
 const homepageConfig = {
@@ -22,12 +25,15 @@ const homepageConfig = {
   // USER: basic personalization
   // ----------------------------------------------------------------
   user: {
-    // Shown in the greeting, e.g. "Good morning, Robert"
+    // EDIT HERE: your name, shown in the greeting ("Good morning, Robert")
     displayName: "Robert",
+
+    // EDIT HERE: the browser tab title
+    pageTitle: "Robert's Homepage",
   },
 
   greeting: {
-    // Text shown before the name for each time of day.
+    // EDIT HERE: text shown before your name for each time of day
     morning: "Good morning",
     afternoon: "Good afternoon",
     evening: "Good evening",
@@ -36,12 +42,35 @@ const homepageConfig = {
   // ----------------------------------------------------------------
   // SEARCH: which engine the search box submits to
   // ----------------------------------------------------------------
+  // Examples:
+  //   Google:     actionUrl: "https://www.google.com/search",  queryParameter: "q"
+  //   DuckDuckGo: actionUrl: "https://duckduckgo.com/",        queryParameter: "q"
+  //   Bing:       actionUrl: "https://www.bing.com/search",    queryParameter: "q"
   search: {
     engine: "Google",
     actionUrl: "https://www.google.com/search",
     // The URL query parameter the engine expects, e.g. ?q=your+search
     queryParameter: "q",
+    // EDIT HERE: the hint text shown inside the empty search box
     placeholder: "Search the web",
+  },
+
+  // ----------------------------------------------------------------
+  // SECTIONS: show or hide whole parts of the page
+  // ----------------------------------------------------------------
+  // EDIT HERE: set any of these to false to hide that section.
+  sections: {
+    showSearch: true,
+    showShortcuts: true,
+    showNotes: true,
+  },
+
+  // ----------------------------------------------------------------
+  // BEHAVIOR: how links act
+  // ----------------------------------------------------------------
+  behavior: {
+    // EDIT HERE: true = shortcuts open in a new tab, false = same tab
+    openLinksInNewTab: true,
   },
 
   // ----------------------------------------------------------------
@@ -53,6 +82,9 @@ const homepageConfig = {
   //   links    - array of { name, url, icon }
   //              "icon" is optional: 1-2 letters/characters shown in a badge.
   //              If left out, the first letter of "name" is used instead.
+  //              URLs must start with https:// (or http://).
+  //
+  // EDIT HERE: replace these placeholder links with your own.
   shortcutGroups: [
     {
       title: "Study",
@@ -92,7 +124,9 @@ const homepageConfig = {
   // NOTES: the "Today's focus" text area
   // ----------------------------------------------------------------
   notes: {
+    // EDIT HERE: the heading above the notes box
     label: "Today's focus",
+    // EDIT HERE: the hint text shown when the notes box is empty
     placeholder: "What matters most today?",
   },
 
@@ -100,7 +134,8 @@ const homepageConfig = {
   // THEME: default appearance before the user picks one themselves
   // ----------------------------------------------------------------
   theme: {
-    // "dark" or "light"
+    // EDIT HERE: "dark" or "light". Only used on the very first visit;
+    // after that, the theme-toggle choice saved in the browser wins.
     default: "dark",
   },
 };

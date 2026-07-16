@@ -1,0 +1,6 @@
+# Local editor/assistant settings — never commit these
+.claude/
+
+# Operating system clutter
+.DS_Store
+Thumbs.db
