@@ -143,5 +143,10 @@ const homepageConfig = {
     // EDIT HERE: "dark" or "light". Only used on the very first visit;
     // after that, the theme-toggle choice saved in the browser wins.
     default: "dark",
+
+    // EDIT HERE: the color theme — "default" (teal) or "indigo"
+    // (Midnight indigo). Also only a first-visit default; the choice
+    // made in the Settings panel wins afterwards.
+    palette: "default",
   },
 };

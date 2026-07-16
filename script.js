@@ -21,8 +21,19 @@
 const STORAGE_KEYS = {
   notes: "homepage.notes",
   theme: "homepage.theme",
+  palette: "homepage.palette",
   config: "homepage.config",
 };
+
+// The color themes styles.css knows about (see its section 1). "default"
+// is the teal look; every other id needs a matching
+// :root[data-palette="..."] block in styles.css and an <option> in the
+// Settings panel's color theme dropdown.
+const KNOWN_PALETTES = ["default", "indigo"];
+
+function isKnownPalette(palette) {
+  return KNOWN_PALETTES.includes(palette);
+}
 
 // Bumped if the shape of the stored config wrapper ever changes, so a
 // future version can migrate (or safely ignore) old data.
@@ -92,7 +103,7 @@ function sanitizeConfig(raw) {
     behavior: { openLinksInNewTab: true },
     shortcutGroups: [],
     notes: { label: "Today's focus", placeholder: "What matters most today?" },
-    theme: { default: "dark" },
+    theme: { default: "dark", palette: "default" },
   };
 
   if (raw === null || raw === undefined || typeof raw !== "object") {
@@ -112,6 +123,12 @@ function sanitizeConfig(raw) {
     notes: { ...fallback.notes, ...(raw.notes || {}) },
     theme: { ...fallback.theme, ...(raw.theme || {}) },
   };
+
+  // An unknown color theme would leave the page unstyled-ish, so it
+  // falls back to the default.
+  if (!isKnownPalette(config.theme.palette)) {
+    config.theme.palette = "default";
+  }
 
   // The search URL becomes the form's action, so it must be a real web
   // address — anything else falls back to the default engine.
@@ -536,14 +553,44 @@ function applyTheme(theme) {
   }
 }
 
+/* Color theme ("palette") — independent of light/dark mode; the two
+   combine, so every color theme has a dark and a light variation. */
+
+function readStoredPalette() {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.palette);
+  } catch (error) {
+    console.warn("Could not read saved color theme from localStorage.", error);
+    return null;
+  }
+}
+
+function writeStoredPalette(palette) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.palette, palette);
+  } catch (error) {
+    console.warn("Could not save color theme choice to localStorage.", error);
+  }
+}
+
+function applyPalette(palette) {
+  document.documentElement.setAttribute(
+    "data-palette",
+    isKnownPalette(palette) ? palette : "default"
+  );
+}
+
 function initTheme(config) {
-  // The inline script in index.html already set data-theme before paint;
-  // this re-derives the same value so the button label and aria state
-  // are correct, and wires up the toggle.
+  // The inline script in index.html already set data-theme and
+  // data-palette before paint; this re-derives the same values so the
+  // button label and aria state are correct, and wires up the toggle.
   const configuredDefault = config.theme.default === "light" ? "light" : "dark";
   const stored = readStoredTheme();
   const initialTheme = stored === "light" || stored === "dark" ? stored : configuredDefault;
   applyTheme(initialTheme);
+
+  const storedPalette = readStoredPalette();
+  applyPalette(isKnownPalette(storedPalette) ? storedPalette : config.theme.palette);
 
   const button = document.getElementById("theme-toggle");
   if (!button) return;

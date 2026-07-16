@@ -76,6 +76,7 @@
     showShortcuts: document.getElementById("set-show-shortcuts"),
     showNotes: document.getElementById("set-show-notes"),
     newTab: document.getElementById("set-new-tab"),
+    palette: document.getElementById("set-palette"),
     groupsEditor: document.getElementById("settings-groups"),
     addGroupBtn: document.getElementById("settings-add-group"),
     exportBtn: document.getElementById("settings-export"),
@@ -141,6 +142,13 @@
     if (els.showShortcuts) els.showShortcuts.checked = config.sections.showShortcuts !== false;
     if (els.showNotes) els.showNotes.checked = config.sections.showNotes !== false;
     if (els.newTab) els.newTab.checked = config.behavior.openLinksInNewTab !== false;
+
+    if (els.palette) {
+      // The active color theme lives on <html data-palette="...">, not in
+      // the config — it's a device choice, like light/dark mode.
+      const active = document.documentElement.getAttribute("data-palette");
+      els.palette.value = isKnownPalette(active) ? active : "default";
+    }
 
     populateEngineSelect(config);
   }
@@ -484,6 +492,7 @@
       config: getCurrentConfig(),
       notes: readNotesFromStorage(),
       theme: readStoredTheme(),
+      palette: document.documentElement.getAttribute("data-palette"),
     };
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -503,6 +512,7 @@
     let rawConfig = null;
     let notes;
     let theme = null;
+    let palette = null;
 
     if (parsed && typeof parsed === "object") {
       if (parsed.format === "homepage-backup" && parsed.config && typeof parsed.config === "object") {
@@ -510,6 +520,7 @@
         rawConfig = parsed.config;
         if (typeof parsed.notes === "string") notes = parsed.notes;
         if (parsed.theme === "light" || parsed.theme === "dark") theme = parsed.theme;
+        if (isKnownPalette(parsed.palette)) palette = parsed.palette;
       } else if (parsed.shortcutGroups || parsed.user || parsed.search) {
         // A bare config object (e.g. copied out of config.js).
         rawConfig = parsed;
@@ -537,6 +548,10 @@
     if (theme) {
       applyTheme(theme);
       writeStoredTheme(theme);
+    }
+    if (palette) {
+      applyPalette(palette);
+      writeStoredPalette(palette);
     }
 
     populateFields();
@@ -633,6 +648,14 @@
         draft.search.placeholder = els.searchPlaceholder.value.trim() || "Search the web";
       });
       els.searchPlaceholder.value = getCurrentConfig().search.placeholder;
+    });
+  }
+
+  if (els.palette) {
+    els.palette.addEventListener("change", () => {
+      const palette = isKnownPalette(els.palette.value) ? els.palette.value : "default";
+      applyPalette(palette);
+      writeStoredPalette(palette);
     });
   }
 

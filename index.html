@@ -12,16 +12,27 @@
   <!-- config.js MUST load before script.js: both read homepageConfig -->
   <script src="config.js"></script>
   <script>
-    // Apply the saved (or configured) theme before the first paint so the
-    // page never flashes the wrong theme while loading.
+    // Apply the saved (or configured) theme and color theme before the
+    // first paint so the page never flashes the wrong colors while
+    // loading. The palette list here must match KNOWN_PALETTES in
+    // script.js and the [data-palette] blocks in styles.css.
     (function () {
+      var cfg = typeof homepageConfig !== "undefined" ? homepageConfig : null;
+      var knownPalettes = ["default", "indigo"];
+
       var theme = null;
       try { theme = localStorage.getItem("homepage.theme"); } catch (e) { /* storage unavailable */ }
       if (theme !== "light" && theme !== "dark") {
-        var cfg = typeof homepageConfig !== "undefined" ? homepageConfig : null;
         theme = cfg && cfg.theme && cfg.theme.default === "light" ? "light" : "dark";
       }
       document.documentElement.setAttribute("data-theme", theme);
+
+      var palette = null;
+      try { palette = localStorage.getItem("homepage.palette"); } catch (e) { /* storage unavailable */ }
+      if (knownPalettes.indexOf(palette) === -1) {
+        palette = cfg && cfg.theme && knownPalettes.indexOf(cfg.theme.palette) !== -1 ? cfg.theme.palette : "default";
+      }
+      document.documentElement.setAttribute("data-palette", palette);
     })();
   </script>
 
@@ -172,6 +183,21 @@
           <input id="set-new-tab" type="checkbox" />
           <span>Open shortcuts in a new tab</span>
         </label>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-theme-heading">
+        <h3 id="settings-theme-heading" class="settings-section-title">Theme</h3>
+        <div class="settings-field">
+          <label for="set-palette">Color theme</label>
+          <select id="set-palette" class="settings-input">
+            <option value="default">Teal (default)</option>
+            <option value="indigo">Midnight indigo</option>
+          </select>
+        </div>
+        <p class="settings-note">
+          Every color theme has a dark and a light variation &mdash; switch
+          between them with the button in the top-right corner of the page.
+        </p>
       </section>
 
       <section class="settings-section" aria-labelledby="settings-groups-heading">

@@ -3,8 +3,12 @@
 
    All colors, spacing, and sizes are defined here as CSS variables.
    Change a value once and it updates everywhere it is used.
-   Dark theme values live under :root; light theme overrides live under
-   :root[data-theme="light"].
+
+   Two independent switches combine here:
+     - light/dark MODE:   <html data-theme="light">  (header toggle)
+     - COLOR THEME:       <html data-palette="...">  (Settings panel)
+   Dark values of the default (teal) theme live under :root; each other
+   block overrides only the colors for its mode + color theme combination.
    ========================================================================== */
 
 :root {
@@ -57,6 +61,40 @@
   --shadow-card: 0 1px 4px rgba(20, 30, 40, 0.08);
   --shadow-card-hover: 0 4px 14px rgba(20, 30, 40, 0.12);
   --focus-ring: 0 0 0 3px rgba(31, 143, 134, 0.4);
+}
+
+/* --- Color theme: Midnight indigo (dark) --- */
+:root[data-palette="indigo"] {
+  --color-bg: #0b1020;
+  --color-bg-elevated: #1d2742;
+  --color-card: #151c33;
+  --color-card-hover: #1d2742;
+  --color-border: #2a3555;
+  --color-text: #f4f7ff;
+  --color-text-muted: #a8b0c7;
+  --color-accent: #7c8cff;
+  --color-accent-strong: #93a0ff;
+  --color-accent-contrast: #0b1020;
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.28);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --focus-ring: 0 0 0 3px rgba(124, 140, 255, 0.55);
+}
+
+/* --- Color theme: Midnight indigo (light) --- */
+:root[data-palette="indigo"][data-theme="light"] {
+  --color-bg: #f5f7ff;
+  --color-bg-elevated: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #eef1ff;
+  --color-border: #d9dff2;
+  --color-text: #17203a;
+  --color-text-muted: #66708a;
+  --color-accent: #5f6fe8;
+  --color-accent-strong: #4e5ed0;
+  --color-accent-contrast: #ffffff;
+  --shadow-card: 0 1px 4px rgba(41, 52, 94, 0.1);
+  --shadow-card-hover: 0 4px 14px rgba(41, 52, 94, 0.1);
+  --focus-ring: 0 0 0 3px rgba(95, 111, 232, 0.4);
 }
 
 /* ==========================================================================

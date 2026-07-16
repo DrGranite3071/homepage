@@ -72,6 +72,9 @@ any files:
   hint text shown in the empty search box.
 - **Page** — show/hide the search bar, shortcut groups, and notes area,
   and choose whether shortcuts open in a new tab.
+- **Theme** — pick a color theme (Teal or Midnight indigo). Each color
+  theme has a dark and a light variation; the header button switches
+  between those, so the two choices combine.
 - **Shortcut groups** — add, rename, hide, reorder (↑/↓), and delete
   groups; add, edit, reorder, and delete the links inside them. Web
   addresses must start with `https://` — a row with an empty or invalid
@@ -95,7 +98,7 @@ devices — export a backup to move them.
 In the **Backup** section of the Settings panel:
 
 - **Export backup** downloads a JSON file containing your settings, your
-  notes, and your theme choice. Keep it somewhere safe; it's plain text
+  notes, and your theme choices (mode and color theme). Keep it somewhere safe; it's plain text
   you can read and edit.
 - **Import backup** loads such a file and replaces your current settings,
   notes, and theme with its contents. (It also accepts a bare
@@ -125,7 +128,8 @@ tweaks are easier in the Settings panel. Quick map:
 | Links open in new tab or not | `behavior.openLinksInNewTab` |
 | Shortcut categories & links  | `shortcutGroups`             |
 | Notes heading & placeholder  | `notes`                      |
-| Default theme                | `theme.default`              |
+| Default theme (dark/light)   | `theme.default`              |
+| Default color theme          | `theme.palette`              |
 
 ### Your display name and page title
 
@@ -250,10 +254,15 @@ the `1. VARIABLES AND THEMES` section, as CSS custom properties:
 }
 ```
 
-Change a value there and it updates everywhere it is used. Dark theme
-values are under `:root`; light theme overrides are under
-`:root[data-theme="light"]`. If you change one theme, check the other
-still looks right.
+Change a value there and it updates everywhere it is used. The default
+(teal) dark values are under `:root`; its light overrides are under
+`:root[data-theme="light"]`; each additional color theme (like Midnight
+indigo) has its own `:root[data-palette="..."]` pair right below. To add
+a new color theme, copy the two indigo blocks, pick a new `data-palette`
+name, and add a matching `<option>` to the Settings panel's color theme
+dropdown in `index.html` plus the palette lists in `script.js`
+(`KNOWN_PALETTES`) and the inline script in `index.html`. If you change
+one variation, check the others still look right.
 
 ## How notes are stored (and what localStorage means)
 
@@ -270,9 +279,9 @@ anywhere — but it also means:
 - clearing the browser's site data deletes them;
 - anyone using the same browser profile on your device can see them.
 
-Your theme choice and your Settings-panel changes are stored the same way
-(keys `homepage.theme` and `homepage.config`) — which is why the panel's
-**Export backup** button exists.
+Your theme choices and your Settings-panel changes are stored the same
+way (keys `homepage.theme`, `homepage.palette`, and `homepage.config`) —
+which is why the panel's **Export backup** button exists.
 
 ## What is public when you use GitHub Pages
 
