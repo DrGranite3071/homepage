@@ -5,12 +5,12 @@
 */
 
 const firebaseConfig = {
-  apiKey: "PASTE_VALUE_HERE",
-  authDomain: "PASTE_VALUE_HERE",
-  projectId: "PASTE_VALUE_HERE",
-  storageBucket: "PASTE_VALUE_HERE",
-  messagingSenderId: "PASTE_VALUE_HERE",
-  appId: "PASTE_VALUE_HERE",
+  apiKey: "AIzaSyDgIvY9QFPcs5GzXF0CPF23tOTTzsIS52c",
+  authDomain: "robert-personal-homepage.firebaseapp.com",
+  projectId: "robert-personal-homepage",
+  storageBucket: "robert-personal-homepage.firebasestorage.app",
+  messagingSenderId: "232092968887",
+  appId: "1:232092968887:web:19bc9cde9bda67f56c6a32",
 };
 
 const CLOUD_PATH = (uid) => `users/${uid}/dashboard/main`;
