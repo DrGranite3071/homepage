@@ -1,7 +1,13 @@
 /*
   config.js
   ---------
-  This is the ONLY file you should need to edit regularly.
+  The DEFAULT settings for the page.
+
+  Since Stage 3 you normally edit everything from the in-page Settings
+  panel instead. Changes made there are saved in the browser and OVERRIDE
+  this file on that device — the panel's "Reset to config.js" button
+  brings these defaults back. This file is still the right place for
+  defaults you want stored in the repository itself.
 
   It controls:
     - your name, page title, and greeting

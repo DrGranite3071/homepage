@@ -9,10 +9,13 @@ It combines:
 - a browser start page: clock, date, personalized greeting, web search, and
   quick shortcuts to your frequently used sites;
 - a small productivity dashboard: categorized shortcut groups and a
-  "Today's focus" notes area.
+  "Today's focus" notes area;
+- an in-page **Settings panel** for editing all of the above without
+  touching any code, plus backup export/import.
 
-This is **Stage 1: Foundation**. It is intentionally simple and is meant to
-be a solid backbone you keep editing, not a finished product.
+This implements the roadmap through **Stage 3: In-page editing**. It is
+intentionally simple and is meant to be a solid backbone you keep editing,
+not a finished product.
 
 > ⚠️ **Public-site warning.** If this repository is public and/or published
 > with GitHub Pages, **everything in it is visible to the whole internet**:
@@ -27,8 +30,9 @@ be a solid backbone you keep editing, not a finished product.
 /
 ├── index.html        the page structure (semantic HTML)
 ├── styles.css        all visual styling, organized into labeled sections
-├── config.js         <-- the file you edit most often (your data)
-├── script.js         the logic that reads config.js and renders the page
+├── config.js         the default settings (a plain data file)
+├── script.js         the logic that reads the settings and renders the page
+├── settings.js       the in-page Settings panel (Stage 3)
 ├── README.md         this file
 ├── .gitignore        keeps local tool settings out of the repository
 └── assets/
@@ -36,9 +40,10 @@ be a solid backbone you keep editing, not a finished product.
 ```
 
 `index.html` loads `config.js` **before** `script.js`, because both read a
-variable called `homepageConfig` that is defined in `config.js`. A small
-inline script in `index.html` also applies your saved theme *before* the
-page paints, so there is no flash of the wrong theme.
+variable called `homepageConfig` that is defined in `config.js`, and
+`settings.js` loads last because it uses helpers defined in `script.js`.
+A small inline script in `index.html` also applies your saved theme
+*before* the page paints, so there is no flash of the wrong theme.
 
 ## How to open the page locally
 
@@ -57,11 +62,58 @@ the recommended way.)
 If you're working in GitHub Codespaces, see "Previewing in Codespaces"
 below.
 
-## Editing your information (`config.js`)
+## Editing from the page: the Settings panel
 
-Almost everything you'll want to personalize lives in `config.js`, in one
-object called `homepageConfig`. Every editable spot is marked with an
-`EDIT HERE` comment. Quick map:
+Click **Settings** (top right) to edit almost everything without touching
+any files:
+
+- **Profile** — your display name and the browser tab title.
+- **Search** — pick an engine (Google, DuckDuckGo, Bing, Brave) and the
+  hint text shown in the empty search box.
+- **Page** — show/hide the search bar, shortcut groups, and notes area,
+  and choose whether shortcuts open in a new tab.
+- **Shortcut groups** — add, rename, hide, reorder (↑/↓), and delete
+  groups; add, edit, reorder, and delete the links inside them. Web
+  addresses must start with `https://` — a row with an empty or invalid
+  address gets a red border and is kept in the panel but not shown on
+  the page.
+- **Backup** — see "Backup, restore, and reset" below.
+
+Changes save automatically to your browser's localStorage (key
+`homepage.config`) and the page updates live behind the panel.
+
+**How this relates to `config.js`:** the file provides the *defaults*;
+anything you save from the Settings panel is stored in the browser and
+**overrides the file on that device**. So if you edit `config.js` after
+using the panel, you won't see the file's changes until you press
+**Reset to config.js** in the panel (or use it on a device/browser with
+no saved changes). Like the notes, panel changes do not sync between
+devices — export a backup to move them.
+
+### Backup, restore, and reset
+
+In the **Backup** section of the Settings panel:
+
+- **Export backup** downloads a JSON file containing your settings, your
+  notes, and your theme choice. Keep it somewhere safe; it's plain text
+  you can read and edit.
+- **Import backup** loads such a file and replaces your current settings,
+  notes, and theme with its contents. (It also accepts a bare
+  `homepageConfig`-style object copied out of `config.js`.) Files that
+  aren't a homepage backup are rejected with a message.
+- **Reset to config.js** deletes the browser-saved settings and goes back
+  to whatever `config.js` says. Notes and theme are kept.
+
+> Note: a backup file contains your name, your links, and your notes — if
+> you share or commit it, all of that becomes visible to others.
+
+## Editing the defaults (`config.js`)
+
+The defaults live in `config.js`, in one object called `homepageConfig`.
+Every editable spot is marked with an `EDIT HERE` comment. This file is
+the right place for changes you want in the repository itself (for
+example, so every new device starts from your real links); day-to-day
+tweaks are easier in the Settings panel. Quick map:
 
 | What you want to change      | Where in `config.js`         |
 | ---------------------------- | ---------------------------- |
@@ -218,7 +270,9 @@ anywhere — but it also means:
 - clearing the browser's site data deletes them;
 - anyone using the same browser profile on your device can see them.
 
-Your theme choice is stored the same way.
+Your theme choice and your Settings-panel changes are stored the same way
+(keys `homepage.theme` and `homepage.config`) — which is why the panel's
+**Export backup** button exists.
 
 ## What is public when you use GitHub Pages
 
@@ -227,8 +281,10 @@ GitHub Pages serves the files in this repository as a website. That means:
 - **Public:** everything committed to the repository — `index.html`,
   `config.js` (including your name and your list of links), all styling
   and code, and the full git history.
-- **Private (stays on your device):** your notes and your theme choice,
-  because they live in your browser's localStorage, not in the repo.
+- **Private (stays on your device):** your notes, your theme choice, and
+  everything you change in the Settings panel, because they live in your
+  browser's localStorage, not in the repo. (Exported backup files are
+  also private — until you commit or share them.)
 
 If you don't want your real name or your link list to be public, either
 keep the repository private (Pages then requires a paid plan, see the
@@ -284,9 +340,8 @@ inactivity by default.
 
 ## Current limitations
 
-- Shortcuts and settings are edited in `config.js` directly — no in-page
-  settings editor yet.
-- Notes live in one browser only — no sync between devices.
+- Notes and Settings-panel changes live in one browser only — no sync
+  between devices (export/import a backup file to move them by hand).
 - No weather, calendar, or other live integrations.
 - No offline support or installability (not a PWA yet).
 - Icons are simple text badges, not real logos.
@@ -299,11 +354,12 @@ These are intentional for this stage — see the roadmap below.
 Configurable homepage: greeting, clock, search, shortcut groups, local
 notes, theme toggle, responsive layout.
 
-**Stage 2 — Personalization** *(next, not implemented yet)*
-Replace placeholder links with real ones, refine categories, refine
-typography, optional background variants, visual layout choices.
+**Stage 2 — Personalization** *(ongoing — now done from the page)*
+Replace placeholder links with real ones and refine categories; the
+Settings panel makes this a continuous activity rather than a one-off
+stage. Typography/background/layout variants remain open ideas.
 
-**Stage 3 — In-page editing** *(not implemented yet)*
+**Stage 3 — In-page editing (this version)**
 Settings panel, add and edit links from the interface, reorder categories,
 import and export configuration, backup and restore.
 

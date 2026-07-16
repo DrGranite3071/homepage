@@ -1,27 +1,80 @@
 /*
   script.js
   ---------
-  Reads the settings from config.js (the "homepageConfig" object) and
-  renders the page. Also handles the clock, search, notes, and theme toggle.
+  Reads the settings and renders the page. Also handles the clock, search,
+  notes, and theme toggle.
 
-  This file is organized as small functions, each with one job, called
-  from initApp() at the bottom. You should not normally need to edit it —
-  everything personal lives in config.js.
+  Where settings come from (Stage 3):
+    1. If you have saved changes with the in-page Settings panel, those are
+       stored in this browser (localStorage, key "homepage.config") and win.
+    2. Otherwise the page uses the "homepageConfig" object from config.js.
+  Either way, the raw settings are passed through sanitizeConfig() so a
+  missing or broken section falls back to safe defaults instead of crashing
+  the page.
+
+  This file is organized as small functions, each with one job, called from
+  initApp() at the bottom. Functions whose names start with "apply" or
+  "render" are safe to run again at any time — the Settings panel
+  (settings.js) calls applyConfig() to refresh the page live after an edit.
 */
 
 const STORAGE_KEYS = {
   notes: "homepage.notes",
   theme: "homepage.theme",
+  config: "homepage.config",
 };
+
+// Bumped if the shape of the stored config wrapper ever changes, so a
+// future version can migrate (or safely ignore) old data.
+const CONFIG_STORAGE_VERSION = 1;
+
+// The configuration currently shown on the page. Set by applyConfig();
+// read by the Settings panel via getCurrentConfig().
+let currentConfig = null;
+
+function getCurrentConfig() {
+  return currentConfig;
+}
 
 /* ------------------------------------------------------------------ */
 /* Configuration handling                                              */
 /* ------------------------------------------------------------------ */
 
-// Returns a safe config object, falling back to sensible defaults if
-// config.js is missing, malformed, or has missing fields. This keeps the
-// page from crashing just because config.js has a typo.
-function getSafeConfig() {
+// Only ordinary web links are allowed; anything else (javascript:, file:,
+// a typo like "wwww.example") is rejected instead of rendering a broken
+// or unsafe link.
+function isValidLinkUrl(url) {
+  return /^https?:\/\//i.test(url);
+}
+
+// Normalizes the shortcutGroups array: keeps only object entries and
+// coerces every field to the expected type. Links with an empty or invalid
+// URL are KEPT here (so half-finished edits in the Settings panel are not
+// silently deleted) — they are skipped at render time instead.
+function sanitizeGroups(rawGroups) {
+  if (!Array.isArray(rawGroups)) return [];
+  return rawGroups
+    .filter((group) => group && typeof group === "object")
+    .map((group) => ({
+      title: typeof group.title === "string" ? group.title : "Untitled group",
+      enabled: group.enabled !== false,
+      links: Array.isArray(group.links)
+        ? group.links
+            .filter((link) => link && typeof link === "object")
+            .map((link) => ({
+              name: typeof link.name === "string" ? link.name : "",
+              url: typeof link.url === "string" ? link.url : "",
+              icon: typeof link.icon === "string" ? link.icon : "",
+            }))
+        : [],
+    }));
+}
+
+// Returns a safe config object, falling back to sensible defaults if the
+// raw input (config.js or an imported backup) is missing, malformed, or
+// has missing fields. This keeps the page from crashing just because a
+// settings file has a typo.
+function sanitizeConfig(raw) {
   const fallback = {
     user: { displayName: "there", pageTitle: "Homepage" },
     greeting: {
@@ -42,25 +95,80 @@ function getSafeConfig() {
     theme: { default: "dark" },
   };
 
-  if (typeof homepageConfig === "undefined" || homepageConfig === null) {
-    console.warn("config.js not found or homepageConfig is missing. Using default settings.");
+  if (raw === null || raw === undefined || typeof raw !== "object") {
+    console.warn("No usable configuration found. Using default settings.");
     return fallback;
   }
 
   // Shallow-merge each section so a missing/broken section falls back
   // individually instead of discarding the whole configuration.
-  return {
-    user: { ...fallback.user, ...(homepageConfig.user || {}) },
-    greeting: { ...fallback.greeting, ...(homepageConfig.greeting || {}) },
-    search: { ...fallback.search, ...(homepageConfig.search || {}) },
-    sections: { ...fallback.sections, ...(homepageConfig.sections || {}) },
-    behavior: { ...fallback.behavior, ...(homepageConfig.behavior || {}) },
-    shortcutGroups: Array.isArray(homepageConfig.shortcutGroups)
-      ? homepageConfig.shortcutGroups
-      : fallback.shortcutGroups,
-    notes: { ...fallback.notes, ...(homepageConfig.notes || {}) },
-    theme: { ...fallback.theme, ...(homepageConfig.theme || {}) },
+  const config = {
+    user: { ...fallback.user, ...(raw.user || {}) },
+    greeting: { ...fallback.greeting, ...(raw.greeting || {}) },
+    search: { ...fallback.search, ...(raw.search || {}) },
+    sections: { ...fallback.sections, ...(raw.sections || {}) },
+    behavior: { ...fallback.behavior, ...(raw.behavior || {}) },
+    shortcutGroups: sanitizeGroups(raw.shortcutGroups),
+    notes: { ...fallback.notes, ...(raw.notes || {}) },
+    theme: { ...fallback.theme, ...(raw.theme || {}) },
   };
+
+  // The search URL becomes the form's action, so it must be a real web
+  // address — anything else falls back to the default engine.
+  if (!isValidLinkUrl(config.search.actionUrl)) {
+    console.warn(
+      "search.actionUrl must start with https:// (or http://). Falling back to the default engine.",
+      config.search.actionUrl
+    );
+    config.search = { ...fallback.search };
+  }
+
+  return config;
+}
+
+/* ------------------------------------------------------------------ */
+/* Saved configuration (localStorage)                                  */
+/* ------------------------------------------------------------------ */
+
+// Changes made in the Settings panel are stored in this browser and take
+// priority over config.js. Deleting the stored copy (the panel's "Reset to
+// config.js" button) goes back to the file.
+
+function loadUserConfig() {
+  try {
+    const rawText = localStorage.getItem(STORAGE_KEYS.config);
+    if (!rawText) return null;
+    const parsed = JSON.parse(rawText);
+    if (!parsed || typeof parsed !== "object" || typeof parsed.config !== "object" || parsed.config === null) {
+      console.warn("Saved settings in this browser look malformed; using config.js instead.");
+      return null;
+    }
+    return parsed.config;
+  } catch (error) {
+    console.warn("Could not read saved settings from localStorage; using config.js instead.", error);
+    return null;
+  }
+}
+
+function saveUserConfig(config) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEYS.config,
+      JSON.stringify({ version: CONFIG_STORAGE_VERSION, config })
+    );
+    return true;
+  } catch (error) {
+    console.warn("Could not save settings to localStorage.", error);
+    return false;
+  }
+}
+
+function clearUserConfig() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.config);
+  } catch (error) {
+    console.warn("Could not remove saved settings from localStorage.", error);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -150,7 +258,9 @@ function startClock() {
 /* Search                                                              */
 /* ------------------------------------------------------------------ */
 
-function initSearch(config) {
+// Applies the configurable parts (engine URL, parameter name, placeholder).
+// Safe to call again whenever the settings change.
+function applySearchSettings(config) {
   const form = document.getElementById("search-form");
   const input = document.getElementById("search-input");
   if (!form || !input) return;
@@ -158,6 +268,14 @@ function initSearch(config) {
   form.setAttribute("action", config.search.actionUrl);
   input.setAttribute("name", config.search.queryParameter);
   input.setAttribute("placeholder", config.search.placeholder);
+}
+
+// Wires up the search behavior. Called exactly once at startup — the
+// listeners don't depend on the settings, so they never need re-binding.
+function bindSearchEvents() {
+  const form = document.getElementById("search-form");
+  const input = document.getElementById("search-input");
+  if (!form || !input) return;
 
   // Submitting via GET lets the browser handle query encoding safely.
   // We only step in to stop empty or whitespace-only searches.
@@ -189,13 +307,6 @@ function initSearch(config) {
 /* ------------------------------------------------------------------ */
 /* Shortcut groups                                                     */
 /* ------------------------------------------------------------------ */
-
-// Only ordinary web links are allowed; anything else (javascript:, file:,
-// a typo like "wwww.example") is skipped with a console warning instead
-// of rendering a broken or unsafe link.
-function isValidLinkUrl(url) {
-  return /^https?:\/\//i.test(url);
-}
 
 // Builds one shortcut link list item. Falls back gracefully if a link
 // entry is missing a name or url instead of throwing.
@@ -264,7 +375,7 @@ function createShortcutGroup(group, behavior) {
   if (addedCount === 0) {
     const empty = document.createElement("p");
     empty.className = "shortcut-empty";
-    empty.textContent = "No links yet. Add some in config.js.";
+    empty.textContent = "No links yet — add some in Settings.";
     section.appendChild(empty);
   } else {
     section.appendChild(list);
@@ -284,7 +395,7 @@ function renderShortcutGroups(config) {
   if (groups.length === 0) {
     const empty = document.createElement("p");
     empty.className = "shortcut-empty";
-    empty.textContent = "No shortcut groups configured yet. Add some in config.js.";
+    empty.textContent = "No shortcut groups yet. Use the Settings button (top right) to add some.";
     container.appendChild(empty);
     return;
   }
@@ -329,15 +440,25 @@ function clearNotesFromStorage() {
   }
 }
 
-function initNotes(config) {
+// Applies the configurable parts (heading text and placeholder).
+// Safe to call again whenever the settings change.
+function applyNotesSettings(config) {
+  const heading = document.getElementById("notes-heading");
+  const textarea = document.getElementById("notes-textarea");
+
+  if (heading && config.notes.label) heading.textContent = config.notes.label;
+  if (textarea && config.notes.placeholder) {
+    textarea.setAttribute("placeholder", config.notes.placeholder);
+  }
+}
+
+// Loads the saved notes and wires up autosave and the Clear button.
+// Called exactly once at startup.
+function initNotes() {
   const textarea = document.getElementById("notes-textarea");
   const clearBtn = document.getElementById("notes-clear");
   const status = document.getElementById("notes-status");
-  const heading = document.getElementById("notes-heading");
   if (!textarea) return;
-
-  if (heading && config.notes.label) heading.textContent = config.notes.label;
-  if (config.notes.placeholder) textarea.setAttribute("placeholder", config.notes.placeholder);
 
   textarea.value = readNotesFromStorage();
 
@@ -439,17 +560,32 @@ function initTheme(config) {
 /* App startup                                                         */
 /* ------------------------------------------------------------------ */
 
-function initApp() {
-  const config = getSafeConfig();
-
+// (Re-)applies a configuration to the page: everything that depends on the
+// settings, and nothing that binds event listeners. The Settings panel
+// calls this after every edit so the page updates live.
+function applyConfig(config) {
+  currentConfig = config;
   applyPageTitle(config);
-  initTheme(config);
   renderGreeting(config);
-  startClock();
   applySectionVisibility(config);
-  initSearch(config);
+  applySearchSettings(config);
   renderShortcutGroups(config);
-  initNotes(config);
+  applyNotesSettings(config);
+}
+
+function initApp() {
+  // Settings saved from the in-page panel win over config.js.
+  const stored = loadUserConfig();
+  const base = typeof homepageConfig !== "undefined" ? homepageConfig : null;
+  const config = sanitizeConfig(stored !== null ? stored : base);
+
+  applyConfig(config);
+  initTheme(config);
+  startClock();
+  bindSearchEvents();
+  initNotes();
+  // The Settings panel itself is set up by settings.js, which runs after
+  // this file (both are deferred, and defer scripts run in file order).
 }
 
 // script.js is loaded with "defer", so the DOM is ready when this runs.

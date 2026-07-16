@@ -26,7 +26,10 @@
   </script>
 
   <link rel="stylesheet" href="styles.css" />
+  <!-- Deferred scripts run in order: script.js renders the page and defines
+       the config helpers, then settings.js builds the Settings panel. -->
   <script src="script.js" defer></script>
+  <script src="settings.js" defer></script>
 </head>
 <body>
 
@@ -50,6 +53,7 @@
         >
           <span id="theme-toggle-label">Dark mode</span>
         </button>
+        <button id="settings-open" class="btn" type="button">Settings</button>
       </div>
     </header>
 
@@ -106,6 +110,99 @@
     </footer>
 
   </div>
+
+  <!-- ========================== SETTINGS PANEL ==========================
+       A native <dialog>, opened by the header's Settings button and driven
+       by settings.js. The static fields below are filled in from the
+       current settings when the panel opens; the shortcut-groups editor
+       inside #settings-groups is built dynamically. -->
+  <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+    <div class="settings-body">
+
+      <header class="settings-head">
+        <h2 id="settings-title" class="settings-title">Settings</h2>
+        <button id="settings-close" class="btn btn-ghost" type="button">Close</button>
+      </header>
+
+      <p class="settings-hint">
+        Changes save automatically to this browser and override
+        <code>config.js</code>. They stay on this device &mdash; use
+        <strong>Export backup</strong> below to move them to another one.
+      </p>
+
+      <section class="settings-section" aria-labelledby="settings-profile-heading">
+        <h3 id="settings-profile-heading" class="settings-section-title">Profile</h3>
+        <div class="settings-field">
+          <label for="set-display-name">Display name</label>
+          <input id="set-display-name" class="settings-input" type="text" autocomplete="off" />
+        </div>
+        <div class="settings-field">
+          <label for="set-page-title">Browser tab title</label>
+          <input id="set-page-title" class="settings-input" type="text" autocomplete="off" />
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-search-heading">
+        <h3 id="settings-search-heading" class="settings-section-title">Search</h3>
+        <div class="settings-field">
+          <label for="set-search-engine">Search engine</label>
+          <select id="set-search-engine" class="settings-input"></select>
+        </div>
+        <div class="settings-field">
+          <label for="set-search-placeholder">Search box hint text</label>
+          <input id="set-search-placeholder" class="settings-input" type="text" autocomplete="off" />
+        </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-page-heading">
+        <h3 id="settings-page-heading" class="settings-section-title">Page</h3>
+        <label class="settings-check">
+          <input id="set-show-search" type="checkbox" />
+          <span>Show the search bar</span>
+        </label>
+        <label class="settings-check">
+          <input id="set-show-shortcuts" type="checkbox" />
+          <span>Show the shortcut groups</span>
+        </label>
+        <label class="settings-check">
+          <input id="set-show-notes" type="checkbox" />
+          <span>Show the notes area</span>
+        </label>
+        <label class="settings-check">
+          <input id="set-new-tab" type="checkbox" />
+          <span>Open shortcuts in a new tab</span>
+        </label>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-groups-heading">
+        <h3 id="settings-groups-heading" class="settings-section-title">Shortcut groups</h3>
+        <p class="settings-note">
+          Web addresses must start with <code>https://</code>. Rows with an
+          empty or invalid address are kept here but not shown on the page.
+        </p>
+        <div id="settings-groups" class="settings-groups">
+          <!-- Group editors are rendered here by settings.js -->
+        </div>
+        <button id="settings-add-group" class="btn" type="button">+ Add group</button>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-backup-heading">
+        <h3 id="settings-backup-heading" class="settings-section-title">Backup</h3>
+        <p class="settings-note">
+          The backup file contains these settings plus your notes and theme
+          choice. Importing one replaces all of them.
+        </p>
+        <div class="settings-backup-actions">
+          <button id="settings-export" class="btn" type="button">Export backup</button>
+          <button id="settings-import" class="btn" type="button">Import backup</button>
+          <button id="settings-reset" class="btn" type="button">Reset to config.js</button>
+        </div>
+        <input id="settings-import-input" type="file" accept=".json,application/json" hidden />
+        <p id="settings-backup-status" class="settings-status" aria-live="polite"></p>
+      </section>
+
+    </div>
+  </dialog>
 
 </body>
 </html>
