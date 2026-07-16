@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Robert's Homepage</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <div class="page">
+
+    <!-- ============================= HEADER ============================= -->
+    <header class="site-header">
+      <div class="greeting-block">
+        <p id="greeting" class="greeting-text">Hello</p>
+        <p id="date" class="date-text"></p>
+      </div>
+
+      <div class="header-right">
+        <p id="clock" class="clock-text" aria-live="off">--:--:--</p>
+        <button
+          id="theme-toggle"
+          class="btn btn-icon"
+          type="button"
+          aria-pressed="false"
+        >
+          <span id="theme-toggle-label">Dark theme</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main-content" class="page">
+
+      <!-- ============================= SEARCH ============================= -->
+      <section class="search-section" aria-label="Web search">
+        <form id="search-form" class="search-form" action="https://www.google.com/search" role="search">
+          <label for="search-input" class="visually-hidden">Search the web</label>
+          <input
+            id="search-input"
+            name="q"
+            type="search"
+            class="search-input"
+            placeholder="Search the web"
+            autocomplete="off"
+            required
+          />
+          <button type="submit" class="btn btn-primary search-submit">Search</button>
+        </form>
+      </section>
+
+      <!-- ========================= SHORTCUT GROUPS ========================= -->
+      <section class="shortcuts-section" aria-labelledby="shortcuts-heading">
+        <h2 id="shortcuts-heading" class="visually-hidden">Shortcut groups</h2>
+        <div id="shortcut-groups" class="shortcut-groups">
+          <!-- Shortcut group cards are rendered here by script.js from config.js -->
+        </div>
+      </section>
+
+      <!-- ============================== NOTES ============================== -->
+      <section class="notes-section" aria-labelledby="notes-heading">
+        <div class="notes-card">
+          <div class="notes-header">
+            <h2 id="notes-heading" class="notes-heading">Today's focus</h2>
+            <button id="notes-clear" class="btn btn-ghost" type="button">Clear</button>
+          </div>
+          <label for="notes-textarea" class="visually-hidden">Today's focus notes</label>
+          <textarea
+            id="notes-textarea"
+            class="notes-textarea"
+            placeholder="What matters most today?"
+            rows="6"
+          ></textarea>
+          <p id="notes-status" class="notes-status" aria-live="polite"></p>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <p>Personal homepage &mdash; everything on this page stays in your browser.</p>
+    </footer>
+
+  </div>
+
+  <!-- config.js MUST load before script.js: script.js reads homepageConfig -->
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

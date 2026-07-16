@@ -1,0 +1,437 @@
+/* ==========================================================================
+   1. VARIABLES AND THEMES
+   ========================================================================== */
+
+:root {
+  /* Layout */
+  --max-content-width: 1100px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.25rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --transition-speed: 160ms;
+
+  /* Dark theme (default) */
+  --color-bg: #12161c;
+  --color-bg-elevated: #1a2029;
+  --color-card: #1c2330;
+  --color-card-hover: #232b3a;
+  --color-border: #2b3444;
+  --color-text: #e8ecf2;
+  --color-text-muted: #9aa5b4;
+  --color-accent: #3fb8af;
+  --color-accent-strong: #57cfc5;
+  --color-accent-contrast: #06201d;
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --focus-ring: 0 0 0 3px rgba(63, 184, 175, 0.55);
+}
+
+/* Light theme: applied when <html data-theme="light"> */
+:root[data-theme="light"] {
+  --color-bg: #f4f6f8;
+  --color-bg-elevated: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #eef2f5;
+  --color-border: #dbe1e8;
+  --color-text: #1b232c;
+  --color-text-muted: #5b6673;
+  --color-accent: #1f8f86;
+  --color-accent-strong: #147870;
+  --color-accent-contrast: #ffffff;
+  --shadow-card: 0 1px 4px rgba(20, 30, 40, 0.08);
+  --shadow-card-hover: 0 4px 14px rgba(20, 30, 40, 0.12);
+  --focus-ring: 0 0 0 3px rgba(31, 143, 134, 0.35);
+}
+
+/* ==========================================================================
+   2. RESET AND BASE STYLES
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  transition: background-color var(--transition-speed) ease,
+    color var(--transition-speed) ease;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+/* Utility: visually hide an element but keep it available to screen readers */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -3rem;
+  left: var(--space-md);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  z-index: 100;
+  transition: top var(--transition-speed) ease;
+}
+
+.skip-link:focus {
+  top: var(--space-md);
+}
+
+/* Consistent, visible focus state for all interactive elements */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ==========================================================================
+   3. LAYOUT
+   ========================================================================== */
+
+.page {
+  max-width: var(--max-content-width);
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+main.page {
+  padding-top: 0;
+}
+
+/* ==========================================================================
+   4. HEADER
+   ========================================================================== */
+
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.greeting-text {
+  font-size: 1.9rem;
+  font-weight: 600;
+}
+
+.date-text {
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.clock-text {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   5. SEARCH
+   ========================================================================== */
+
+.search-section {
+  display: flex;
+  justify-content: center;
+}
+
+.search-form {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+  font-size: 1.05rem;
+  transition: border-color var(--transition-speed) ease,
+    background-color var(--transition-speed) ease;
+}
+
+.search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.search-input:hover {
+  border-color: var(--color-accent);
+}
+
+/* ==========================================================================
+   6. SHORTCUT GROUPS
+   ========================================================================== */
+
+.shortcut-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--space-md);
+}
+
+.shortcut-group {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+}
+
+.shortcut-group-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  color: var(--color-text);
+}
+
+.shortcut-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.shortcut-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--color-text);
+  border: 1px solid transparent;
+  transition: background-color var(--transition-speed) ease,
+    border-color var(--transition-speed) ease,
+    transform var(--transition-speed) ease;
+}
+
+.shortcut-link:hover {
+  background: var(--color-card-hover);
+  border-color: var(--color-border);
+}
+
+.shortcut-link:active {
+  transform: scale(0.98);
+}
+
+.shortcut-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.shortcut-name {
+  font-size: 0.98rem;
+}
+
+.shortcut-empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   7. NOTES
+   ========================================================================== */
+
+.notes-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-card);
+  max-width: 640px;
+}
+
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+}
+
+.notes-heading {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.notes-textarea {
+  width: 100%;
+  resize: vertical;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.notes-status {
+  min-height: 1.2em;
+  margin-top: var(--space-xs);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   8. BUTTONS AND CONTROLS
+   ========================================================================== */
+
+.btn {
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  transition: background-color var(--transition-speed) ease,
+    border-color var(--transition-speed) ease,
+    transform var(--transition-speed) ease;
+}
+
+.btn:hover {
+  background: var(--color-card-hover);
+  border-color: var(--color-accent);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-icon {
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   9. RESPONSIVE RULES
+   ========================================================================== */
+
+/* Tablet landscape is the primary target and already fits the base layout
+   well thanks to the flexible grid above. The rules below refine behavior
+   at the wider and narrower ends of the range. */
+
+@media (min-width: 900px) {
+  .greeting-text {
+    font-size: 2.2rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-right {
+    justify-content: space-between;
+  }
+
+  .search-form {
+    flex-direction: column;
+  }
+
+  .search-submit {
+    width: 100%;
+  }
+
+  .shortcut-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   10. REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
