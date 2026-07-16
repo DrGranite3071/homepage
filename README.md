@@ -1,8 +1,9 @@
 # Homepage
 
 A personal browser start page and productivity dashboard, built with plain
-HTML, CSS, and JavaScript — no frameworks, no build tools, no server, no
-external services.
+HTML, CSS, and JavaScript — no frameworks, no build tools, and no custom
+server. Optional Firebase Authentication and Firestore provide manual
+cross-device synchronization when configured.
 
 It combines:
 
@@ -33,6 +34,7 @@ not a finished product.
 ├── config.js         the default settings (a plain data file)
 ├── script.js         the logic that reads the settings and renders the page
 ├── settings.js       the in-page Settings panel (Stage 3)
+├── firebase-sync.js  optional Google sign-in and manual Firestore sync
 ├── README.md         this file
 ├── .gitignore        keeps local tool settings out of the repository
 └── assets/
@@ -88,6 +90,8 @@ any files:
   address gets a red border and is kept in the panel but not shown on
   the page.
 - **Backup** — see "Backup, restore, and reset" below.
+- **Account & cloud sync** — optionally sign in with Google and manually
+  upload or download one dashboard copy. Local saving continues as before.
 
 Changes save automatically to your browser's localStorage (key
 `homepage.config`) and the page updates live behind the panel.
@@ -312,6 +316,109 @@ color theme) are stored the same way (keys `homepage.theme` and
 `homepage.config`) — which is why the panel's **Export backup** button
 exists.
 
+## Optional Google sign-in and Firebase synchronization
+
+Firebase synchronization is an optional second layer over localStorage. The
+page remains local-first: signing in does not upload, download, merge, or
+listen for changes automatically. Local edits and Today’s Focus autosave keep
+working while signed out, offline, or when Firebase fails.
+
+The manual cloud copy contains the meaningful dashboard state: profile and
+page title, search settings, section visibility, link behavior, ordered groups
+and links, notes labels, palette, layout density, dark/light mode, Today’s
+Focus text, schema version, and a server-generated update time. Authentication
+tokens, dialog state, logs, and file history are never stored in Firestore.
+
+The Firestore document path is:
+
+```text
+users/{authenticated-user-uid}/dashboard/main
+```
+
+### Firebase Console setup
+
+The committed `firebase-sync.js` intentionally contains
+`PASTE_VALUE_HERE` placeholders, so sync stays disabled until setup is
+complete. To enable it:
+
+1. In Firebase Console, register a Web app and copy its public web
+   configuration into `firebaseConfig` in `firebase-sync.js`.
+2. Under **Authentication → Sign-in method**, enable Google.
+3. Under **Authentication → Settings → Authorized domains**, add
+   `drgranite3071.github.io`. Add `localhost` as well if you test locally.
+4. Create a Cloud Firestore database and keep UID-scoped rules equivalent to:
+
+   ```text
+   match /users/{userId}/{document=**} {
+     allow read, write: if request.auth != null
+                        && request.auth.uid == userId;
+   }
+   ```
+
+Firebase’s web configuration is a public project identifier, not an Admin
+credential. Security depends on Authentication and Firestore Security Rules.
+Never add a service-account JSON file, private key, Admin SDK credential, or
+password to this repository.
+
+To disable Firebase later without breaking the homepage, restore any one of
+the Firebase configuration values to `PASTE_VALUE_HERE` (or remove the
+`firebase-sync.js` module tag and Account section). All existing localStorage
+features continue to work.
+
+### Sign in and first-device upload
+
+1. Open **Settings → Account & cloud sync** and choose **Sign in with Google**.
+   Phones and touch-oriented devices use redirect sign-in; larger pointer
+   devices use a popup with redirect fallback.
+2. Optionally choose **Export local backup first**.
+3. Choose **Upload this device to cloud**. If no cloud document exists, one is
+   created. If one already exists, the page warns that it will be replaced and
+   requires confirmation.
+
+### Download on a second device
+
+1. Sign in with the same Google account.
+2. If a cloud document exists, the page displays **Cloud data is available**
+   but does not apply it.
+3. Optionally export that device’s local backup, then choose **Download cloud
+   data to this device**.
+4. Confirm the warning. Only then are local settings, theme, and notes replaced.
+
+There is no conflict merge or version history. Upload replaces the single
+cloud document; download replaces the current device’s dashboard. The backup
+button is the safety mechanism before either overwrite. Malformed data or an
+unsupported schema version is rejected without applying it.
+
+### Status, deletion, offline behavior, and privacy
+
+The Account section reports states such as Local only, Signed in, Uploading,
+Downloading, Synced, Cloud data available, Offline, and Sync failed. It also
+shows the last successful upload/download recorded on that device.
+
+**Delete cloud copy** requires confirmation and removes only the signed-in
+user’s dashboard document. It does not delete the Firebase account or local
+data; other devices simply lose the copy they could download.
+
+When offline, the homepage and local saves work normally. Cloud operations
+fail safely and can be retried when online. Firebase and Google necessarily
+receive account and operation metadata when you sign in or synchronize, and
+the cloud document contains the dashboard data listed above. Anyone who can
+access the same Google account can sign in and retrieve that account’s copy.
+
+### Google sign-in troubleshooting
+
+- An “unauthorized domain” message usually means the exact Pages host was not
+  added under Firebase Authentication’s authorized domains.
+- Enable the Google provider and confirm the Web app configuration matches the
+  same Firebase project as Firestore.
+- Redirect authentication can be affected by browsers that block cross-site
+  storage. Firebase documents additional redirect-domain approaches; popup
+  sign-in is used on larger devices to avoid that limitation where practical.
+- If Firestore reports access denied, verify the signed-in UID path and the
+  UID-scoped rules above. Do not make the database public to fix it.
+- Check the browser console for technical diagnostics; the visible UI avoids
+  exposing raw Firebase errors.
+
 ## What is public when you use GitHub Pages
 
 GitHub Pages serves the files in this repository as a website. That means:
@@ -319,10 +426,10 @@ GitHub Pages serves the files in this repository as a website. That means:
 - **Public:** everything committed to the repository — `index.html`,
   `config.js` (including your name and your list of links), all styling
   and code, and the full git history.
-- **Private (stays on your device):** your notes, your theme choice, and
-  everything you change in the Settings panel, because they live in your
-  browser's localStorage, not in the repo. (Exported backup files are
-  also private — until you commit or share them.)
+- **Local by default:** your notes, theme choice, and Settings changes live in
+  localStorage. When you explicitly upload while signed in, the synchronized
+  fields described above also exist in your private, rules-protected Firestore
+  document. Exported backup files remain private until you share or commit them.
 
 If you don't want your real name or your link list to be public, either
 keep the repository private (Pages then requires a paid plan, see the
@@ -384,8 +491,8 @@ inactivity by default.
 
 ## Current limitations
 
-- Notes and Settings-panel changes live in one browser only — no sync
-  between devices (export/import a backup file to move them by hand).
+- Cloud synchronization is manual and keeps one current copy. There is no
+  automatic sync, live listener, merge, history, or cloud backup series.
 - No weather, calendar, or other live integrations.
 - No offline support or installability (not a PWA yet).
 - Icons are simple text badges, not real logos.

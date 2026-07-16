@@ -15,7 +15,7 @@
        NUMBER on all four links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=6"></script>
+  <script src="config.js?v=7"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -66,11 +66,12 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=6" defer></script>
-  <script src="settings.js?v=6" defer></script>
+  <script src="script.js?v=7" defer></script>
+  <script src="settings.js?v=7" defer></script>
+  <script type="module" src="firebase-sync.js?v=7"></script>
 </head>
 <body>
 
@@ -241,6 +242,36 @@
           </select>
         </div>
         <p class="settings-note">Controls card padding and the space between dashboard items.</p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-account-heading">
+        <h3 id="settings-account-heading" class="settings-section-title">Account &amp; cloud sync</h3>
+        <div id="sync-signed-out" class="sync-state">
+          <p class="settings-note">Optional manual sync. This homepage keeps working locally when signed out or offline.</p>
+          <button id="sync-sign-in" class="btn btn-primary" type="button">Sign in with Google</button>
+        </div>
+        <div id="sync-signed-in" class="sync-state" hidden>
+          <div class="sync-user">
+            <img id="sync-user-photo" class="sync-user-photo" alt="" hidden />
+            <div>
+              <p id="sync-user-name" class="sync-user-name"></p>
+              <p id="sync-user-email" class="settings-note"></p>
+            </div>
+          </div>
+          <div id="sync-cloud-notice" class="sync-notice" hidden>
+            <strong>Cloud data is available.</strong>
+            <span>It has not been applied. Choose Download, keep this device as-is, or export a backup first.</span>
+          </div>
+          <div class="sync-actions">
+            <button id="sync-upload" class="btn" type="button">Upload this device to cloud</button>
+            <button id="sync-download" class="btn" type="button">Download cloud data to this device</button>
+            <button id="sync-export" class="btn btn-ghost" type="button">Export local backup first</button>
+            <button id="sync-delete" class="btn btn-danger" type="button">Delete cloud copy</button>
+            <button id="sync-sign-out" class="btn btn-ghost" type="button">Sign out</button>
+          </div>
+        </div>
+        <p id="sync-status" class="settings-status" role="status" aria-live="polite">Local only</p>
+        <p id="sync-last-time" class="settings-note"></p>
       </section>
 
       <section class="settings-section" aria-labelledby="settings-groups-heading">

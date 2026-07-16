@@ -511,6 +511,10 @@
     showBackupStatus("Backup downloaded.");
   }
 
+  // Cloud sync can offer the same proven local backup action without
+  // duplicating download logic or reaching into private panel state.
+  window.homepageExportBackup = exportBackup;
+
   function applyImportedData(parsed) {
     let rawConfig = null;
     let notes;
@@ -715,4 +719,9 @@
   }
 
   if (els.resetBtn) els.resetBtn.addEventListener("click", resetToConfigFile);
+
+  document.addEventListener("homepage:config-applied", () => {
+    populateFields();
+    renderGroupsEditor();
+  });
 })();

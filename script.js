@@ -45,6 +45,7 @@ function isKnownDensity(density) {
 // Bumped if the shape of the stored config wrapper ever changes, so a
 // future version can migrate (or safely ignore) old data.
 const CONFIG_STORAGE_VERSION = 1;
+const DASHBOARD_SCHEMA_VERSION = 1;
 
 // The configuration currently shown on the page. Set by applyConfig();
 // read by the Settings panel via getCurrentConfig().
@@ -470,6 +471,48 @@ function clearNotesFromStorage() {
   } catch (error) {
     console.warn("Could not clear saved notes from localStorage.", error);
   }
+}
+
+// A complete local snapshot used by backup and optional cloud sync.
+function getDashboardSnapshot() {
+  return {
+    schemaVersion: DASHBOARD_SCHEMA_VERSION,
+    config: sanitizeConfig(getCurrentConfig()),
+    notes: readNotesFromStorage(),
+    theme: (() => {
+      const stored = readStoredTheme();
+      return stored === "light" || stored === "dark"
+        ? stored
+        : getCurrentConfig().theme.default === "light" ? "light" : "dark";
+    })(),
+  };
+}
+
+function validateDashboardSnapshot(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (raw.schemaVersion !== DASHBOARD_SCHEMA_VERSION) return null;
+  if (!raw.config || typeof raw.config !== "object" || Array.isArray(raw.config)) return null;
+  if (typeof raw.notes !== "string") return null;
+  if (raw.theme !== "light" && raw.theme !== "dark") return null;
+  return {
+    schemaVersion: DASHBOARD_SCHEMA_VERSION,
+    config: sanitizeConfig(raw.config),
+    notes: raw.notes,
+    theme: raw.theme,
+  };
+}
+
+function applyDashboardSnapshot(raw) {
+  const clean = validateDashboardSnapshot(raw);
+  if (!clean) return false;
+  if (!saveUserConfig(clean.config) || !writeNotesToStorage(clean.notes)) return false;
+  writeStoredTheme(clean.theme);
+  applyConfig(clean.config);
+  applyTheme(clean.theme);
+  const textarea = document.getElementById("notes-textarea");
+  if (textarea) textarea.value = clean.notes;
+  document.dispatchEvent(new CustomEvent("homepage:config-applied"));
+  return true;
 }
 
 // Applies the configurable parts (heading text and placeholder).
