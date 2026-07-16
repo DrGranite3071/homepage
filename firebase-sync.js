@@ -15,6 +15,8 @@ const firebaseConfig = {
 
 const CLOUD_PATH = (uid) => `users/${uid}/dashboard/main`;
 const LAST_SYNC_KEY = "homepage.lastSync";
+const SIGN_IN_PROGRESS_KEY = "homepage.firebaseSignInProgress";
+const SIGN_IN_PROGRESS_TTL_MS = 10 * 60 * 1000;
 
 const els = {
   signedOut: document.getElementById("sync-signed-out"),
@@ -41,6 +43,11 @@ let cloudExists = false;
 let firebaseApi = null;
 let authObserverRegistered = false;
 let authErrorMessage = "";
+let firstAuthStateResolved = false;
+let resolveFirstAuthState;
+const firstAuthState = new Promise((resolve) => {
+  resolveFirstAuthState = resolve;
+});
 
 function isConfigured() {
   return Object.values(firebaseConfig).every(
@@ -50,6 +57,41 @@ function isConfigured() {
 
 function setStatus(message) {
   if (els.status) els.status.textContent = message;
+}
+
+function readSignInMarker() {
+  try {
+    const marker = JSON.parse(localStorage.getItem(SIGN_IN_PROGRESS_KEY) || "null");
+    if (marker && Number.isFinite(marker.startedAt) && Date.now() - marker.startedAt < SIGN_IN_PROGRESS_TTL_MS) {
+      return marker;
+    }
+    localStorage.removeItem(SIGN_IN_PROGRESS_KEY);
+  } catch (error) {
+    console.warn("Firebase sign-in marker could not be read.");
+  }
+  return null;
+}
+
+function writeSignInMarker() {
+  try {
+    localStorage.setItem(SIGN_IN_PROGRESS_KEY, JSON.stringify({ startedAt: Date.now() }));
+  } catch (error) {
+    console.warn("Firebase sign-in marker could not be saved.");
+  }
+}
+
+function clearSignInMarker() {
+  try {
+    localStorage.removeItem(SIGN_IN_PROGRESS_KEY);
+  } catch (error) {
+    console.warn("Firebase sign-in marker could not be cleared.");
+  }
+}
+
+function showSignInRetry(message) {
+  authErrorMessage = message;
+  setStatus(message);
+  if (els.signIn) els.signIn.textContent = "Try Google sign-in again";
 }
 
 function setBusy(value) {
@@ -117,6 +159,8 @@ function showUser(user) {
     updateControlAvailability();
     return;
   }
+  clearSignInMarker();
+  if (els.signIn) els.signIn.textContent = "Sign in with Google";
   if (els.name) els.name.textContent = user.displayName || "Google account";
   if (els.email) els.email.textContent = user.email || "";
   if (els.photo) {
@@ -153,11 +197,6 @@ async function beginSignIn() {
   const provider = new firebaseApi.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   try {
-    const smallTouchDevice = matchMedia("(max-width: 600px) and (pointer: coarse)").matches;
-    if (smallTouchDevice) {
-      await firebaseApi.signInWithRedirect(auth, provider);
-      return;
-    }
     try {
       await firebaseApi.signInWithPopup(auth, provider);
     } catch (error) {
@@ -168,14 +207,15 @@ async function beginSignIn() {
       ]);
       if (error && redirectFallbackCodes.has(error.code)) {
         console.info(`Firebase popup unavailable (${error.code}); using redirect sign-in.`);
+        writeSignInMarker();
         await firebaseApi.signInWithRedirect(auth, provider);
         return;
       }
       throw error;
     }
   } catch (error) {
-    authErrorMessage = friendlyError(error, "sign-in");
-    setStatus(authErrorMessage);
+    clearSignInMarker();
+    showSignInRetry(friendlyError(error, "sign-in"));
   } finally {
     setBusy(false);
   }
@@ -278,6 +318,8 @@ function bindControls() {
     if (!auth || busy) return;
     try {
       authErrorMessage = "";
+      clearSignInMarker();
+      if (els.signIn) els.signIn.textContent = "Sign in with Google";
       await firebaseApi.signOut(auth);
     } catch (error) {
       setStatus(friendlyError(error, "sign-out"));
@@ -303,21 +345,32 @@ function registerAuthObserver() {
     cloudExists = false;
     if (user) authErrorMessage = "";
     showUser(user);
+    if (!firstAuthStateResolved) {
+      firstAuthStateResolved = true;
+      resolveFirstAuthState(user);
+    }
     if (user) await inspectCloud();
   });
 }
 
 async function processRedirectResult() {
+  const pendingRedirect = readSignInMarker();
   try {
     const credential = await firebaseApi.getRedirectResult(auth);
     if (credential && credential.user) {
       console.info("Firebase redirect sign-in completed successfully.");
+      clearSignInMarker();
     } else {
       console.info("Firebase redirect check completed; no pending redirect sign-in.");
     }
+    const observedUser = await firstAuthState;
+    if (pendingRedirect && !credential && !observedUser) {
+      clearSignInMarker();
+      showSignInRetry("Google sign-in returned without completing. Please try again.");
+    }
   } catch (error) {
-    authErrorMessage = friendlyError(error, "redirect result");
-    setStatus(authErrorMessage);
+    clearSignInMarker();
+    showSignInRetry(friendlyError(error, "redirect result"));
   }
 }
 

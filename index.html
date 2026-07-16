@@ -12,10 +12,10 @@
   <!-- The ?v= number on every css/js link below is a cache-buster: browsers
        (and GitHub Pages) cache these files aggressively, and without it a
        deployed change can invisibly mix with stale cached files. BUMP THE
-       NUMBER on all four links whenever you change any css/js file. -->
+       NUMBER on all five links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=7"></script>
+  <script src="config.js?v=9"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -66,12 +66,12 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=9" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=7" defer></script>
-  <script src="settings.js?v=7" defer></script>
-  <script type="module" src="firebase-sync.js?v=8"></script>
+  <script src="script.js?v=9" defer></script>
+  <script src="settings.js?v=9" defer></script>
+  <script type="module" src="firebase-sync.js?v=9"></script>
 </head>
 <body>
 
@@ -299,6 +299,11 @@
         </div>
         <input id="settings-import-input" type="file" accept=".json,application/json" hidden />
         <p id="settings-backup-status" class="settings-status" aria-live="polite"></p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
+        <h3 id="settings-diagnostics-heading" class="settings-section-title">Diagnostics</h3>
+        <p class="settings-note">Application build: <strong>2026.07.16-2</strong></p>
       </section>
 
     </div>

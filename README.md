@@ -368,9 +368,10 @@ features continue to work.
 ### Sign in and first-device upload
 
 1. Open **Settings → Account & cloud sync** and choose **Sign in with Google**.
-   Desktop and tablet browsers use a popup from that direct button gesture,
-   with redirect fallback when the popup is unavailable. Small touch devices
-   use redirect sign-in.
+   Browsers first use a popup from that direct button gesture, including on
+   phones and tablets. If the browser blocks or does not support the popup,
+   the app falls back to redirect sign-in and shows a retry state if the
+   redirect returns without an authenticated user.
 2. Optionally choose **Export local backup first**.
 3. Choose **Upload this device to cloud**. If no cloud document exists, one is
    created. If one already exists, the page warns that it will be replaced and
@@ -456,7 +457,7 @@ appear within a few minutes. If you see an old version, do a hard refresh
 
 To keep cached and fresh files from mixing (which can make a new feature
 silently misbehave), every css/js link in `index.html` carries a `?v=N`
-version number. **Bump that number on all four links whenever you change
+version number. **Bump that number on all five links whenever you change
 any css/js file** — browsers then treat them as new files and fetch them
 together with the updated page.
 
