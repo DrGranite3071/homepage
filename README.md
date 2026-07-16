@@ -79,6 +79,9 @@ any files:
   included in backup files. To make it the default on *every* device,
   set `theme.palette` in `config.js` and push — a static site has no
   server, so that committed value is the cross-device source of truth.
+- **Layout** — choose Compact, Comfortable, or Spacious density. Density
+  changes card padding and the gaps between dashboard items without changing
+  colors, content, or features. Comfortable is the default.
 - **Shortcut groups** — add, rename, hide, reorder (↑/↓), and delete
   groups; add, edit, reorder, and delete the links inside them. Web
   addresses must start with `https://` — a row with an empty or invalid
@@ -102,8 +105,8 @@ devices — export a backup to move them.
 In the **Backup** section of the Settings panel:
 
 - **Export backup** downloads a JSON file containing your settings, your
-  notes, and your theme choices (mode and color theme). Keep it somewhere safe; it's plain text
-  you can read and edit.
+  notes, theme choices (mode and color theme), and layout density. Keep it
+  somewhere safe; it's plain text you can read and edit.
 - **Import backup** loads such a file and replaces your current settings,
   notes, and theme with its contents. (It also accepts a bare
   `homepageConfig`-style object copied out of `config.js`.) Files that
@@ -114,6 +117,10 @@ In the **Backup** section of the Settings panel:
 
 > Note: a backup file contains your name, your links, and your notes — if
 > you share or commit it, all of that becomes visible to others.
+
+Backups made before layout density was added remain compatible. When a
+backup has no density value, or contains an unrecognized one, the page uses
+**Comfortable** safely.
 
 ## Editing the defaults (`config.js`)
 
@@ -135,6 +142,7 @@ tweaks are easier in the Settings panel. Quick map:
 | Notes heading & placeholder  | `notes`                      |
 | Default theme (dark/light)   | `theme.default`              |
 | Default color theme          | `theme.palette`              |
+| Default layout density       | `layout.density`             |
 
 ### Your display name and page title
 
@@ -245,6 +253,21 @@ theme: {
 
 This only controls the theme on the very first visit — after that, the
 choice you make with the theme toggle (saved in your browser) takes over.
+
+### Layout density
+
+Open **Settings → Layout** to choose how much breathing room the dashboard
+uses:
+
+- **Compact** uses the smallest card padding and gaps, fitting more content
+  on screen while keeping controls touch-friendly.
+- **Comfortable** is the balanced default.
+- **Spacious** gives cards and dashboard sections the most room.
+
+The choice applies immediately and is stored with the rest of your settings
+in the browser's `homepage.config` localStorage entry. It persists after a
+refresh, is included in exported backups, and returns to the `config.js`
+default when you use **Reset to config.js**.
 
 ## Changing colors
 

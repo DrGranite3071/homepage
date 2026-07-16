@@ -15,7 +15,7 @@
        NUMBER on all four links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=5"></script>
+  <script src="config.js?v=6"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -50,14 +50,27 @@
         palette = cfg && cfg.theme && knownPalettes.indexOf(cfg.theme.palette) !== -1 ? cfg.theme.palette : "default";
       }
       document.documentElement.setAttribute("data-palette", palette);
+
+      var density = null;
+      try {
+        if (storedText) {
+          var saved = JSON.parse(storedText);
+          if (saved && saved.config && saved.config.layout) density = saved.config.layout.density;
+        }
+      } catch (e) { /* storage unavailable or malformed */ }
+      if (["compact", "comfortable", "spacious"].indexOf(density) === -1) {
+        density = cfg && cfg.layout ? cfg.layout.density : null;
+      }
+      if (["compact", "comfortable", "spacious"].indexOf(density) === -1) density = "comfortable";
+      document.documentElement.setAttribute("data-density", density);
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=5" defer></script>
-  <script src="settings.js?v=5" defer></script>
+  <script src="script.js?v=6" defer></script>
+  <script src="settings.js?v=6" defer></script>
 </head>
 <body>
 
@@ -215,6 +228,19 @@
           Every color theme has a dark and a light variation &mdash; switch
           between them with the button in the top-right corner of the page.
         </p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-layout-heading">
+        <h3 id="settings-layout-heading" class="settings-section-title">Layout</h3>
+        <div class="settings-field">
+          <label for="set-density">Layout density</label>
+          <select id="set-density" class="settings-input">
+            <option value="compact">Compact</option>
+            <option value="comfortable">Comfortable</option>
+            <option value="spacious">Spacious</option>
+          </select>
+        </div>
+        <p class="settings-note">Controls card padding and the space between dashboard items.</p>
       </section>
 
       <section class="settings-section" aria-labelledby="settings-groups-heading">

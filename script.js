@@ -32,9 +32,14 @@ const STORAGE_KEYS = {
 // :root[data-palette="..."] block in styles.css and an <option> in the
 // Settings panel's color theme dropdown.
 const KNOWN_PALETTES = ["default", "indigo"];
+const KNOWN_DENSITIES = ["compact", "comfortable", "spacious"];
 
 function isKnownPalette(palette) {
   return KNOWN_PALETTES.includes(palette);
+}
+
+function isKnownDensity(density) {
+  return KNOWN_DENSITIES.includes(density);
 }
 
 // Bumped if the shape of the stored config wrapper ever changes, so a
@@ -106,6 +111,7 @@ function sanitizeConfig(raw) {
     shortcutGroups: [],
     notes: { label: "Today's focus", placeholder: "What matters most today?" },
     theme: { default: "dark", palette: "default" },
+    layout: { density: "comfortable" },
   };
 
   if (raw === null || raw === undefined || typeof raw !== "object") {
@@ -124,12 +130,19 @@ function sanitizeConfig(raw) {
     shortcutGroups: sanitizeGroups(raw.shortcutGroups),
     notes: { ...fallback.notes, ...(raw.notes || {}) },
     theme: { ...fallback.theme, ...(raw.theme || {}) },
+    layout: { ...fallback.layout, ...(raw.layout || {}) },
   };
 
   // An unknown color theme would leave the page unstyled-ish, so it
   // falls back to the default.
   if (!isKnownPalette(config.theme.palette)) {
     config.theme.palette = "default";
+  }
+
+  // Older backups do not have a layout section. Unknown or missing values
+  // use the balanced default so they remain fully compatible.
+  if (!isKnownDensity(config.layout.density)) {
+    config.layout.density = "comfortable";
   }
 
   // The search URL becomes the form's action, so it must be a real web
@@ -567,6 +580,13 @@ function applyPalette(palette) {
   );
 }
 
+function applyDensity(density) {
+  document.documentElement.setAttribute(
+    "data-density",
+    isKnownDensity(density) ? density : "comfortable"
+  );
+}
+
 // An earlier version stored the color theme in its own localStorage key.
 // If that key is found, fold its value into the given config (and into
 // the saved settings, if there are any) and delete it.
@@ -623,6 +643,7 @@ function applyConfig(config) {
   renderShortcutGroups(config);
   applyNotesSettings(config);
   applyPalette(config.theme.palette);
+  applyDensity(config.layout.density);
 }
 
 function initApp() {

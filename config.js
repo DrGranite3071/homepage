@@ -15,6 +15,7 @@
     - the shortcut groups and links shown on the dashboard
     - which sections are visible
     - whether links open in a new tab
+    - the default layout density
     - the default theme and the notes label
 
   index.html loads this file BEFORE script.js, so script.js can read
@@ -77,6 +78,14 @@ const homepageConfig = {
   behavior: {
     // EDIT HERE: true = shortcuts open in a new tab, false = same tab
     openLinksInNewTab: true,
+  },
+
+  // ----------------------------------------------------------------
+  // LAYOUT: default spacing density
+  // ----------------------------------------------------------------
+  layout: {
+    // EDIT HERE: "compact", "comfortable", or "spacious"
+    density: "comfortable",
   },
 
   // ----------------------------------------------------------------

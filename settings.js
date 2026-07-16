@@ -77,6 +77,7 @@
     showNotes: document.getElementById("set-show-notes"),
     newTab: document.getElementById("set-new-tab"),
     palette: document.getElementById("set-palette"),
+    density: document.getElementById("set-density"),
     groupsEditor: document.getElementById("settings-groups"),
     addGroupBtn: document.getElementById("settings-add-group"),
     exportBtn: document.getElementById("settings-export"),
@@ -145,6 +146,11 @@
 
     if (els.palette) {
       els.palette.value = isKnownPalette(config.theme.palette) ? config.theme.palette : "default";
+    }
+    if (els.density) {
+      els.density.value = isKnownDensity(config.layout.density)
+        ? config.layout.density
+        : "comfortable";
     }
 
     populateEngineSelect(config);
@@ -650,6 +656,16 @@
     els.palette.addEventListener("change", () => {
       updateConfig((draft) => {
         draft.theme.palette = isKnownPalette(els.palette.value) ? els.palette.value : "default";
+      });
+    });
+  }
+
+  if (els.density) {
+    els.density.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.layout.density = isKnownDensity(els.density.value)
+          ? els.density.value
+          : "comfortable";
       });
     });
   }
