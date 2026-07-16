@@ -21,8 +21,10 @@
 const STORAGE_KEYS = {
   notes: "homepage.notes",
   theme: "homepage.theme",
-  palette: "homepage.palette",
   config: "homepage.config",
+  // Legacy key from an earlier version, where the color theme was stored
+  // separately from the rest of the settings. Migrated on startup.
+  legacyPalette: "homepage.palette",
 };
 
 // The color themes styles.css knows about (see its section 1). "default"
@@ -554,30 +556,35 @@ function applyTheme(theme) {
 }
 
 /* Color theme ("palette") — independent of light/dark mode; the two
-   combine, so every color theme has a dark and a light variation. */
-
-function readStoredPalette() {
-  try {
-    return localStorage.getItem(STORAGE_KEYS.palette);
-  } catch (error) {
-    console.warn("Could not read saved color theme from localStorage.", error);
-    return null;
-  }
-}
-
-function writeStoredPalette(palette) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.palette, palette);
-  } catch (error) {
-    console.warn("Could not save color theme choice to localStorage.", error);
-  }
-}
+   combine, so every color theme has a dark and a light variation. The
+   chosen palette lives in the config (theme.palette), so it is saved,
+   exported, and reset together with the rest of the settings. */
 
 function applyPalette(palette) {
   document.documentElement.setAttribute(
     "data-palette",
     isKnownPalette(palette) ? palette : "default"
   );
+}
+
+// An earlier version stored the color theme in its own localStorage key.
+// If that key is found, fold its value into the given config (and into
+// the saved settings, if there are any) and delete it.
+function migrateLegacyPalette(config) {
+  let legacy = null;
+  try {
+    legacy = localStorage.getItem(STORAGE_KEYS.legacyPalette);
+    if (legacy !== null) localStorage.removeItem(STORAGE_KEYS.legacyPalette);
+  } catch (error) {
+    return config;
+  }
+  if (!isKnownPalette(legacy) || legacy === config.theme.palette) return config;
+
+  // The legacy key held an explicit user choice, so persist it — even if
+  // that means creating the saved-settings entry for the first time.
+  config.theme.palette = legacy;
+  saveUserConfig(config);
+  return config;
 }
 
 function initTheme(config) {
@@ -588,9 +595,6 @@ function initTheme(config) {
   const stored = readStoredTheme();
   const initialTheme = stored === "light" || stored === "dark" ? stored : configuredDefault;
   applyTheme(initialTheme);
-
-  const storedPalette = readStoredPalette();
-  applyPalette(isKnownPalette(storedPalette) ? storedPalette : config.theme.palette);
 
   const button = document.getElementById("theme-toggle");
   if (!button) return;
@@ -618,13 +622,14 @@ function applyConfig(config) {
   applySearchSettings(config);
   renderShortcutGroups(config);
   applyNotesSettings(config);
+  applyPalette(config.theme.palette);
 }
 
 function initApp() {
   // Settings saved from the in-page panel win over config.js.
   const stored = loadUserConfig();
   const base = typeof homepageConfig !== "undefined" ? homepageConfig : null;
-  const config = sanitizeConfig(stored !== null ? stored : base);
+  const config = migrateLegacyPalette(sanitizeConfig(stored !== null ? stored : base));
 
   applyConfig(config);
   initTheme(config);

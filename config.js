@@ -145,8 +145,9 @@ const homepageConfig = {
     default: "dark",
 
     // EDIT HERE: the color theme — "default" (teal) or "indigo"
-    // (Midnight indigo). Also only a first-visit default; the choice
-    // made in the Settings panel wins afterwards.
-    palette: "default",
+    // (Midnight indigo). Because this file is in the repository, the value
+    // here is what every device starts with (your cross-device choice);
+    // a different choice made in the Settings panel wins on that device.
+    palette: "indigo",
   },
 };

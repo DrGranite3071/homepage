@@ -74,7 +74,11 @@ any files:
   and choose whether shortcuts open in a new tab.
 - **Theme** — pick a color theme (Teal or Midnight indigo). Each color
   theme has a dark and a light variation; the header button switches
-  between those, so the two choices combine.
+  between those, so the two choices combine. The color theme is saved
+  with the rest of the settings, so it persists on this device and is
+  included in backup files. To make it the default on *every* device,
+  set `theme.palette` in `config.js` and push — a static site has no
+  server, so that committed value is the cross-device source of truth.
 - **Shortcut groups** — add, rename, hide, reorder (↑/↓), and delete
   groups; add, edit, reorder, and delete the links inside them. Web
   addresses must start with `https://` — a row with an empty or invalid
@@ -105,7 +109,8 @@ In the **Backup** section of the Settings panel:
   `homepageConfig`-style object copied out of `config.js`.) Files that
   aren't a homepage backup are rejected with a message.
 - **Reset to config.js** deletes the browser-saved settings and goes back
-  to whatever `config.js` says. Notes and theme are kept.
+  to whatever `config.js` says (including its color theme). Notes and the
+  dark/light choice are kept.
 
 > Note: a backup file contains your name, your links, and your notes — if
 > you share or commit it, all of that becomes visible to others.
@@ -279,9 +284,10 @@ anywhere — but it also means:
 - clearing the browser's site data deletes them;
 - anyone using the same browser profile on your device can see them.
 
-Your theme choices and your Settings-panel changes are stored the same
-way (keys `homepage.theme`, `homepage.palette`, and `homepage.config`) —
-which is why the panel's **Export backup** button exists.
+Your dark/light choice and your Settings-panel changes (which include the
+color theme) are stored the same way (keys `homepage.theme` and
+`homepage.config`) — which is why the panel's **Export backup** button
+exists.
 
 ## What is public when you use GitHub Pages
 
@@ -312,6 +318,12 @@ roadmap's Stage 5 for alternatives) or use placeholder values.
 Every later `git push` to `main` redeploys automatically; changes usually
 appear within a few minutes. If you see an old version, do a hard refresh
 (Ctrl+Shift+R) — browsers cache start pages aggressively.
+
+To keep cached and fresh files from mixing (which can make a new feature
+silently misbehave), every css/js link in `index.html` carries a `?v=N`
+version number. **Bump that number on all four links whenever you change
+any css/js file** — browsers then treat them as new files and fetch them
+together with the updated page.
 
 ## Saving your changes with Git
 

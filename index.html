@@ -9,8 +9,13 @@
   <!-- Simple inline favicon so the browser doesn't request a missing file -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%233fb8af'/%3E%3Ctext x='8' y='12' font-size='10' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='%2306201d'%3EH%3C/text%3E%3C/svg%3E" />
 
+  <!-- The ?v= number on every css/js link below is a cache-buster: browsers
+       (and GitHub Pages) cache these files aggressively, and without it a
+       deployed change can invisibly mix with stale cached files. BUMP THE
+       NUMBER on all four links whenever you change any css/js file. -->
+
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js"></script>
+  <script src="config.js?v=5"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -27,8 +32,20 @@
       }
       document.documentElement.setAttribute("data-theme", theme);
 
+      // The color theme lives inside the saved settings (homepage.config);
+      // homepage.palette is a legacy key from an earlier version, kept as
+      // a fallback until script.js migrates it.
       var palette = null;
-      try { palette = localStorage.getItem("homepage.palette"); } catch (e) { /* storage unavailable */ }
+      try {
+        var storedText = localStorage.getItem("homepage.config");
+        if (storedText) {
+          var stored = JSON.parse(storedText);
+          if (stored && stored.config && stored.config.theme) palette = stored.config.theme.palette;
+        }
+        if (knownPalettes.indexOf(palette) === -1) {
+          palette = localStorage.getItem("homepage.palette");
+        }
+      } catch (e) { /* storage unavailable or malformed */ }
       if (knownPalettes.indexOf(palette) === -1) {
         palette = cfg && cfg.theme && knownPalettes.indexOf(cfg.theme.palette) !== -1 ? cfg.theme.palette : "default";
       }
@@ -36,11 +53,11 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=5" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js" defer></script>
-  <script src="settings.js" defer></script>
+  <script src="script.js?v=5" defer></script>
+  <script src="settings.js?v=5" defer></script>
 </head>
 <body>
 
