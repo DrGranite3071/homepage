@@ -105,10 +105,12 @@
     const draft = cloneConfig(getCurrentConfig());
     mutate(draft);
     const clean = sanitizeConfig(draft);
-    if (!saveUserConfig(clean)) {
+    const saved = saveUserConfig(clean);
+    if (!saved) {
       showBackupStatus("Could not save — browser storage is unavailable.", true);
     }
     applyConfig(clean);
+    if (saved) notifyLocalDashboardChange("settings");
     return clean;
   }
 
@@ -496,6 +498,11 @@
       config: getCurrentConfig(),
       notes: readNotesFromStorage(),
       theme: readStoredTheme(),
+      preferences: {
+        automaticSync: typeof window.homepageGetAutoSyncPreference === "function"
+          ? window.homepageGetAutoSyncPreference()
+          : false,
+      },
     };
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
@@ -519,6 +526,7 @@
     let rawConfig = null;
     let notes;
     let theme = null;
+    let importedAutoSync = null;
 
     if (parsed && typeof parsed === "object") {
       if (parsed.format === "homepage-backup" && parsed.config && typeof parsed.config === "object") {
@@ -526,6 +534,9 @@
         rawConfig = parsed.config;
         if (typeof parsed.notes === "string") notes = parsed.notes;
         if (parsed.theme === "light" || parsed.theme === "dark") theme = parsed.theme;
+        if (parsed.preferences && typeof parsed.preferences.automaticSync === "boolean") {
+          importedAutoSync = parsed.preferences.automaticSync;
+        }
         // Older backups carried the color theme as a separate field.
         if (isKnownPalette(parsed.palette)) {
           rawConfig.theme = { ...(rawConfig.theme || {}), palette: parsed.palette };
@@ -561,6 +572,9 @@
 
     populateFields();
     renderGroupsEditor();
+    document.dispatchEvent(new CustomEvent("homepage:import-complete", {
+      detail: { automaticSync: importedAutoSync },
+    }));
   }
 
   function importBackupFile(file) {
@@ -589,6 +603,7 @@
     clearUserConfig();
     const base = typeof homepageConfig !== "undefined" ? homepageConfig : null;
     applyConfig(sanitizeConfig(base));
+    notifyLocalDashboardChange("reset");
 
     populateFields();
     renderGroupsEditor();

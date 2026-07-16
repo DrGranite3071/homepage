@@ -843,6 +843,15 @@ textarea:focus-visible {
   width: 100%;
 }
 
+.sync-auto-control {
+  width: 100%;
+  max-width: 22rem;
+}
+
+.sync-decision-dialog {
+  max-width: 38rem;
+}
+
 @media (max-width: 480px) {
   .sync-actions .btn,
   #sync-sign-in {

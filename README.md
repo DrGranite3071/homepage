@@ -2,8 +2,8 @@
 
 A personal browser start page and productivity dashboard, built with plain
 HTML, CSS, and JavaScript — no frameworks, no build tools, and no custom
-server. Optional Firebase Authentication and Firestore provide manual
-cross-device synchronization when configured.
+server. Optional Firebase Authentication and Firestore provide manual and
+automatic cross-device synchronization when configured.
 
 It combines:
 
@@ -34,7 +34,7 @@ not a finished product.
 ├── config.js         the default settings (a plain data file)
 ├── script.js         the logic that reads the settings and renders the page
 ├── settings.js       the in-page Settings panel (Stage 3)
-├── firebase-sync.js  optional Google sign-in and manual Firestore sync
+├── firebase-sync.js  optional Google sign-in and Firestore sync
 ├── README.md         this file
 ├── .gitignore        keeps local tool settings out of the repository
 └── assets/
@@ -90,8 +90,9 @@ any files:
   address gets a red border and is kept in the panel but not shown on
   the page.
 - **Backup** — see "Backup, restore, and reset" below.
-- **Account & cloud sync** — optionally sign in with Google and manually
-  upload or download one dashboard copy. Local saving continues as before.
+- **Account & cloud sync** — optionally sign in with Google, keep the manual
+  controls, or explicitly enable automatic sync. Local saving always happens
+  first.
 
 Changes save automatically to your browser's localStorage (key
 `homepage.config`) and the page updates live behind the panel.
@@ -319,15 +320,18 @@ exists.
 ## Optional Google sign-in and Firebase synchronization
 
 Firebase synchronization is an optional second layer over localStorage. The
-page remains local-first: signing in does not upload, download, merge, or
-listen for changes automatically. Local edits and Today’s Focus autosave keep
-working while signed out, offline, or when Firebase fails.
+page remains local-first: every setting, shortcut, theme, and note change is
+saved and rendered locally before cloud work is scheduled. Signing in alone
+does not enable automatic sync. It defaults to **Off** until explicitly
+enabled in each browser.
 
 The manual cloud copy contains the meaningful dashboard state: profile and
 page title, search settings, section visibility, link behavior, ordered groups
 and links, notes labels, palette, layout density, dark/light mode, Today’s
-Focus text, schema version, and a server-generated update time. Authentication
-tokens, dialog state, logs, and file history are never stored in Firestore.
+Focus text, schema version, and a server-generated update time. Automatic sync
+adds a random per-browser client ID and revision number; this is not a device
+fingerprint. Authentication tokens, dialog state, logs, and file history are
+never stored in Firestore.
 
 The Firestore document path is:
 
@@ -337,9 +341,9 @@ users/{authenticated-user-uid}/dashboard/main
 
 ### Firebase Console setup
 
-The committed `firebase-sync.js` intentionally contains
-`PASTE_VALUE_HERE` placeholders, so sync stays disabled until setup is
-complete. To enable it:
+The committed `firebase-sync.js` contains this site’s public Firebase Web App
+configuration. For a new project, replace those values with the configuration
+from its Firebase Console. To enable synchronization:
 
 1. In Firebase Console, register a Web app and copy its public web
    configuration into `firebaseConfig` in `firebase-sync.js`.
@@ -360,8 +364,10 @@ credential. Security depends on Authentication and Firestore Security Rules.
 Never add a service-account JSON file, private key, Admin SDK credential, or
 password to this repository.
 
-To disable Firebase later without breaking the homepage, restore any one of
-the Firebase configuration values to `PASTE_VALUE_HERE` (or remove the
+To safely disable automatic synchronization, set **Automatic sync** to Off.
+This removes the live listener and stops automatic writes while preserving
+localStorage and every manual control. To disable Firebase completely,
+restore any one of the Firebase configuration values to `PASTE_VALUE_HERE` (or remove the
 `firebase-sync.js` module tag and Account section). All existing localStorage
 features continue to work.
 
@@ -377,6 +383,35 @@ features continue to work.
    created. If one already exists, the page warns that it will be replaced and
    requires confirmation.
 
+### Automatic sync
+
+Export a backup before first use. Then sign in and set **Automatic sync** to
+**On**. The preference persists in that browser and is included in backup
+export/import.
+
+- If no cloud document exists, the current validated local dashboard becomes
+  the first cloud version.
+- If cloud data exists but this browser has no prior baseline, nothing is
+  overwritten silently. Choose **Use cloud version**, **Upload this device
+  version**, **Export local backup first**, or **Keep automatic sync off for
+  now**.
+- After a baseline is established, local changes are combined into one full
+  dashboard write 1.5 seconds after changes stop. Rapid note typing therefore
+  does not write once per keystroke.
+- A single Firestore listener receives validated updates from other signed-in
+  phones, tablets, and browsers and applies them without a page reload.
+
+The cloud document stores `syncMetadata.clientId`, a monotonically advanced
+`revision`, the dashboard schema version, and a server timestamp. A browser
+recognizes its own write, marks it synchronized, and does not apply or upload
+it again.
+
+If another device updates the cloud while this browser has unsynced local
+changes, automatic writes pause. The conflict dialog shows the cloud time and
+offers the complete cloud version, this device’s complete version, backup
+export, or leaving synchronization paused. Field-by-field merging and history
+are intentionally not implemented.
+
 ### Download on a second device
 
 1. Sign in with the same Google account.
@@ -386,20 +421,37 @@ features continue to work.
    data to this device**.
 4. Confirm the warning. Only then are local settings, theme, and notes replaced.
 
-There is no conflict merge or version history. Upload replaces the single
-cloud document; download replaces the current device’s dashboard. The backup
+There is no field-by-field conflict merge or version history. Upload replaces
+the single cloud document; download replaces the current device’s dashboard. The backup
 button is the safety mechanism before either overwrite. Malformed data or an
 unsupported schema version is rejected without applying it.
 
 ### Status, deletion, offline behavior, and privacy
 
-The Account section reports states such as Local only, Signed in, Uploading,
-Downloading, Synced, Cloud data available, Offline, and Sync failed. It also
-shows the last successful upload/download recorded on that device.
+The Account section reports Local only, automatic sync off, Preparing
+automatic sync, Unsynced local changes, Syncing, Synced, Updated from another
+device, Offline — saved locally, Conflict — action required, and Sync failed.
+It also shows the last successful sync and current revision.
+
+Offline edits remain in localStorage and only the latest combined dashboard
+state is retained for retry. Reconnecting flushes it when a baseline is ready
+and no conflict is paused. Firestore persistent web cache is not enabled;
+localStorage remains the offline source of truth.
+
+Manual Upload and Download remain available while automatic sync is On. They
+temporarily pause live processing, complete their confirmed whole-document
+operation, establish a baseline, and restart the listener. Delete cloud copy
+turns automatic sync Off before deletion so this browser does not immediately
+recreate it. Import saves locally first and schedules one update after import
+finishes. Reset to config.js remains explicit and never deletes cloud data.
 
 **Delete cloud copy** requires confirmation and removes only the signed-in
 user’s dashboard document. It does not delete the Firebase account or local
 data; other devices simply lose the copy they could download.
+
+Signing out cancels pending automatic writes, removes the listener, and keeps
+local data. Signing back in restarts synchronization only when that browser’s
+saved preference is On.
 
 When offline, the homepage and local saves work normally. Cloud operations
 fail safely and can be retried when online. Firebase and Google necessarily
@@ -424,6 +476,9 @@ access the same Google account can sign in and retrieve that account’s copy.
   UID-scoped rules above. Do not make the database public to fix it.
 - Check the browser console for technical diagnostics; the visible UI avoids
   exposing raw Firebase errors.
+- If devices do not update, confirm both show build `2026.07.16-3`, use the
+  same Google account, show Automatic sync On, and have no unresolved first-use
+  or conflict dialog.
 
 ## What is public when you use GitHub Pages
 

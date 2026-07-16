@@ -196,6 +196,10 @@ function saveUserConfig(config) {
   }
 }
 
+function notifyLocalDashboardChange(source) {
+  document.dispatchEvent(new CustomEvent("homepage:local-change", { detail: { source } }));
+}
+
 function clearUserConfig() {
   try {
     localStorage.removeItem(STORAGE_KEYS.config);
@@ -551,18 +555,14 @@ function initNotes() {
     }
   }
 
-  let saveTimeout = null;
   textarea.addEventListener("input", () => {
-    // Debounce so we don't write to storage on every keystroke.
-    if (saveTimeout) clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => {
-      const saved = writeNotesToStorage(textarea.value);
-      if (saved) {
-        showStatus("Saved");
-      } else {
-        showStatus("Could not save — storage unavailable in this browser.", true);
-      }
-    }, 300);
+    const saved = writeNotesToStorage(textarea.value);
+    if (saved) {
+      showStatus("Saved");
+      notifyLocalDashboardChange("notes");
+    } else {
+      showStatus("Could not save — storage unavailable in this browser.", true);
+    }
   });
 
   if (clearBtn) {
@@ -571,6 +571,7 @@ function initNotes() {
       if (!confirmed) return;
       textarea.value = "";
       clearNotesFromStorage();
+      notifyLocalDashboardChange("notes-clear");
       showStatus("Cleared");
       textarea.focus();
     });
@@ -667,6 +668,7 @@ function initTheme(config) {
     const next = current === "light" ? "dark" : "light";
     applyTheme(next);
     writeStoredTheme(next);
+    notifyLocalDashboardChange("theme");
   });
 }
 
