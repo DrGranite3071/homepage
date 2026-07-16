@@ -368,8 +368,9 @@ features continue to work.
 ### Sign in and first-device upload
 
 1. Open **Settings → Account & cloud sync** and choose **Sign in with Google**.
-   Phones and touch-oriented devices use redirect sign-in; larger pointer
-   devices use a popup with redirect fallback.
+   Desktop and tablet browsers use a popup from that direct button gesture,
+   with redirect fallback when the popup is unavailable. Small touch devices
+   use redirect sign-in.
 2. Optionally choose **Export local backup first**.
 3. Choose **Upload this device to cloud**. If no cloud document exists, one is
    created. If one already exists, the page warns that it will be replaced and
@@ -412,8 +413,12 @@ access the same Google account can sign in and retrieve that account’s copy.
 - Enable the Google provider and confirm the Web app configuration matches the
   same Firebase project as Firestore.
 - Redirect authentication can be affected by browsers that block cross-site
-  storage. Firebase documents additional redirect-domain approaches; popup
-  sign-in is used on larger devices to avoid that limitation where practical.
+  storage when GitHub Pages and the Firebase authentication helper use
+  different origins. Popup sign-in is used on desktop and tablet devices to
+  avoid that limitation where practical. Fully reliable redirect sign-in on
+  all browsers additionally requires a Firebase-supported same-origin helper
+  approach, such as Firebase Hosting, a reverse proxy, or self-hosted helper
+  files.
 - If Firestore reports access denied, verify the signed-in UID path and the
   UID-scoped rules above. Do not make the database public to fix it.
 - Check the browser console for technical diagnostics; the visible UI avoids

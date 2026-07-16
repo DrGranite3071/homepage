@@ -39,6 +39,8 @@ let currentUser = null;
 let busy = false;
 let cloudExists = false;
 let firebaseApi = null;
+let authObserverRegistered = false;
+let authErrorMessage = "";
 
 function isConfigured() {
   return Object.values(firebaseConfig).every(
@@ -52,17 +54,26 @@ function setStatus(message) {
 
 function setBusy(value) {
   busy = value;
-  [els.signIn, els.signOut, els.upload, els.download, els.remove].forEach((button) => {
-    if (button) button.disabled = value;
+  updateControlAvailability();
+}
+
+function updateControlAvailability() {
+  if (els.signIn) els.signIn.disabled = busy || !auth || Boolean(currentUser);
+  [els.signOut, els.upload, els.download, els.remove].forEach((button) => {
+    if (button) button.disabled = busy || !currentUser;
   });
 }
 
 function friendlyError(error, action) {
-  console.error(`Firebase ${action} failed.`, error);
+  const code = error && typeof error.code === "string" ? error.code : "unknown";
+  console.error(`Firebase ${action} failed (${code}).`);
   if (!navigator.onLine) return "Offline — local changes are still safe on this device.";
-  const code = error && typeof error.code === "string" ? error.code : "";
-  if (code.includes("unauthorized-domain")) return "Sign-in is not enabled for this website domain.";
-  if (code.includes("popup-closed")) return "Sign-in was cancelled.";
+  if (code === "auth/unauthorized-domain") return "Google sign-in is not enabled for this website domain.";
+  if (code === "auth/popup-blocked") return "The sign-in window was blocked. Please allow popups and try again.";
+  if (code === "auth/popup-closed-by-user") return "Google sign-in was cancelled. Please try again.";
+  if (code === "auth/network-request-failed") return "Google sign-in could not reach the network. Please try again.";
+  if (action === "redirect result") return "Google sign-in did not complete. Please try again.";
+  if (action === "sign-in") return "Google sign-in did not complete. Please try again.";
   if (code.includes("permission-denied")) return "Sync failed — Firestore access was denied.";
   return "Sync failed. Local data was not changed; try again later.";
 }
@@ -102,7 +113,8 @@ function showUser(user) {
   if (!user) {
     if (els.notice) els.notice.hidden = true;
     if (els.lastTime) els.lastTime.textContent = "";
-    setStatus("Local only");
+    setStatus(authErrorMessage || "Local only");
+    updateControlAvailability();
     return;
   }
   if (els.name) els.name.textContent = user.displayName || "Google account";
@@ -113,6 +125,7 @@ function showUser(user) {
   }
   showLastSync(user.uid);
   setStatus("Signed in");
+  updateControlAvailability();
 }
 
 function cloudRef() {
@@ -134,27 +147,35 @@ async function inspectCloud() {
 
 async function beginSignIn() {
   if (!auth || busy) return;
+  authErrorMessage = "";
   setBusy(true);
   setStatus("Opening Google sign-in…");
   const provider = new firebaseApi.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   try {
-    const mobile = matchMedia("(max-width: 700px), (pointer: coarse)").matches;
-    if (mobile) {
+    const smallTouchDevice = matchMedia("(max-width: 600px) and (pointer: coarse)").matches;
+    if (smallTouchDevice) {
       await firebaseApi.signInWithRedirect(auth, provider);
       return;
     }
     try {
       await firebaseApi.signInWithPopup(auth, provider);
     } catch (error) {
-      if (error && (error.code === "auth/popup-blocked" || error.code === "auth/cancelled-popup-request")) {
+      const redirectFallbackCodes = new Set([
+        "auth/popup-blocked",
+        "auth/cancelled-popup-request",
+        "auth/operation-not-supported-in-this-environment",
+      ]);
+      if (error && redirectFallbackCodes.has(error.code)) {
+        console.info(`Firebase popup unavailable (${error.code}); using redirect sign-in.`);
         await firebaseApi.signInWithRedirect(auth, provider);
         return;
       }
       throw error;
     }
   } catch (error) {
-    setStatus(friendlyError(error, "sign-in"));
+    authErrorMessage = friendlyError(error, "sign-in");
+    setStatus(authErrorMessage);
   } finally {
     setBusy(false);
   }
@@ -256,6 +277,7 @@ function bindControls() {
   if (els.signOut) els.signOut.addEventListener("click", async () => {
     if (!auth || busy) return;
     try {
+      authErrorMessage = "";
       await firebaseApi.signOut(auth);
     } catch (error) {
       setStatus(friendlyError(error, "sign-out"));
@@ -268,11 +290,40 @@ function bindControls() {
     if (typeof window.homepageExportBackup === "function") window.homepageExportBackup();
   });
   window.addEventListener("offline", () => setStatus("Offline — local changes are still available."));
-  window.addEventListener("online", () => setStatus(currentUser ? "Signed in" : "Local only"));
+  window.addEventListener("online", () => {
+    setStatus(currentUser ? "Signed in" : authErrorMessage || "Local only");
+  });
+}
+
+function registerAuthObserver() {
+  if (authObserverRegistered) return;
+  authObserverRegistered = true;
+  firebaseApi.onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
+    cloudExists = false;
+    if (user) authErrorMessage = "";
+    showUser(user);
+    if (user) await inspectCloud();
+  });
+}
+
+async function processRedirectResult() {
+  try {
+    const credential = await firebaseApi.getRedirectResult(auth);
+    if (credential && credential.user) {
+      console.info("Firebase redirect sign-in completed successfully.");
+    } else {
+      console.info("Firebase redirect check completed; no pending redirect sign-in.");
+    }
+  } catch (error) {
+    authErrorMessage = friendlyError(error, "redirect result");
+    setStatus(authErrorMessage);
+  }
 }
 
 async function init() {
   bindControls();
+  showUser(null);
   if (!isConfigured()) {
     if (els.signIn) els.signIn.disabled = true;
     setStatus("Local only — Firebase sync is not configured yet.");
@@ -288,13 +339,17 @@ async function init() {
     const app = firebaseApi.initializeApp(firebaseConfig);
     auth = firebaseApi.getAuth(app);
     db = firebaseApi.getFirestore(app);
-    await firebaseApi.getRedirectResult(auth);
-    firebaseApi.onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-      showUser(user);
-      if (user) await inspectCloud();
-    });
+    try {
+      await firebaseApi.setPersistence(auth, firebaseApi.browserLocalPersistence);
+    } catch (error) {
+      const code = error && typeof error.code === "string" ? error.code : "unknown";
+      console.warn(`Firebase local auth persistence could not be enabled (${code}).`);
+    }
+    registerAuthObserver();
+    updateControlAvailability();
+    await processRedirectResult();
   } catch (error) {
+    showUser(null);
     setStatus(friendlyError(error, "initialization"));
   }
 }
