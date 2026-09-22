@@ -25,7 +25,14 @@ const STORAGE_KEYS = {
   // Legacy key from an earlier version, where the color theme was stored
   // separately from the rest of the settings. Migrated on startup.
   legacyPalette: "homepage.palette",
+  unsplashEnabled: "homepage.unsplash.enabled",
+  unsplashIntensity: "homepage.unsplash.intensity",
+  unsplashDark: "homepage.unsplash.photo.dark",
+  unsplashLight: "homepage.unsplash.photo.light",
 };
+
+const UNSPLASH_WORKER_URL = "https://homepage-unsplash.clasaxiead.workers.dev";
+const UNSPLASH_INTENSITIES = ["soft", "normal", "strong"];
 
 // The color themes styles.css knows about (see its section 1). "default"
 // is the teal look; every other id needs a matching
@@ -33,6 +40,12 @@ const STORAGE_KEYS = {
 // Settings panel's color theme dropdown.
 const KNOWN_PALETTES = ["default", "indigo"];
 const KNOWN_DENSITIES = ["compact", "comfortable", "spacious"];
+const APPEARANCE_OPTIONS = {
+  cardStyle: ["solid", "soft", "glass"],
+  cornerStyle: ["compact", "rounded", "soft"],
+  ambience: ["off", "subtle", "strong"],
+};
+const APPEARANCE_DEFAULTS = { cardStyle: "soft", cornerStyle: "rounded", ambience: "subtle" };
 
 function isKnownPalette(palette) {
   return KNOWN_PALETTES.includes(palette);
@@ -50,6 +63,14 @@ const DASHBOARD_SCHEMA_VERSION = 1;
 // The configuration currently shown on the page. Set by applyConfig();
 // read by the Settings panel via getCurrentConfig().
 let currentConfig = null;
+
+let unsplashEnabled = true;
+let unsplashIntensity = "normal";
+let activeUnsplashPhoto = null;
+let activeUnsplashTheme = null;
+let activeUnsplashLayer = 0;
+let unsplashRequestToken = 0;
+let unsplashLoading = false;
 
 function getCurrentConfig() {
   return currentConfig;
@@ -148,6 +169,7 @@ function sanitizeConfig(raw) {
       morning: "Good morning",
       afternoon: "Good afternoon",
       evening: "Good evening",
+      subtitle: "Make today count.",
     },
     search: {
       engine: "Google",
@@ -162,6 +184,7 @@ function sanitizeConfig(raw) {
     weather: sanitizeWeather(null),
     theme: { default: "dark", palette: "default" },
     layout: { density: "comfortable" },
+    appearance: { ...APPEARANCE_DEFAULTS },
   };
 
   if (raw === null || raw === undefined || typeof raw !== "object") {
@@ -182,7 +205,18 @@ function sanitizeConfig(raw) {
     weather: sanitizeWeather(raw.weather),
     theme: { ...fallback.theme, ...(raw.theme || {}) },
     layout: { ...fallback.layout, ...(raw.layout || {}) },
+    appearance: { ...fallback.appearance, ...(raw.appearance || {}) },
   };
+
+  // Older stored configs and backups have no appearance section.
+  Object.keys(APPEARANCE_OPTIONS).forEach((key) => {
+    if (!APPEARANCE_OPTIONS[key].includes(config.appearance[key])) {
+      config.appearance[key] = APPEARANCE_DEFAULTS[key];
+    }
+  });
+  if (typeof config.greeting.subtitle !== "string") {
+    config.greeting.subtitle = fallback.greeting.subtitle;
+  }
 
   // An unknown color theme would leave the page unstyled-ish, so it
   // falls back to the default.
@@ -282,6 +316,11 @@ function renderGreeting(config) {
 
   const name = config.user.displayName || "there";
   greetingEl.textContent = `${timeOfDayGreeting}, ${name}`;
+  const subtitleEl = document.getElementById("greeting-subtitle");
+  if (subtitleEl) {
+    subtitleEl.textContent = config.greeting.subtitle.trim();
+    subtitleEl.hidden = !subtitleEl.textContent;
+  }
 }
 
 function applySectionVisibility(config) {
@@ -629,6 +668,239 @@ function initNotes() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Optional Unsplash background                                       */
+/* ------------------------------------------------------------------ */
+
+function unsplashPhotoStorageKey(theme) {
+  return theme === "light" ? STORAGE_KEYS.unsplashLight : STORAGE_KEYS.unsplashDark;
+}
+
+function isSafeHttpsUrl(value) {
+  if (typeof value !== "string") return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch (error) {
+    return false;
+  }
+}
+
+function sanitizeUnsplashPhoto(raw) {
+  if (!raw || typeof raw !== "object" ||
+      typeof raw.id !== "string" || !raw.id.trim() ||
+      !isSafeHttpsUrl(raw.imageUrl) ||
+      !isSafeHttpsUrl(raw.photographerUrl) ||
+      !isSafeHttpsUrl(raw.photoUrl) ||
+      !isSafeHttpsUrl(raw.downloadLocation) ||
+      typeof raw.photographerName !== "string" || !raw.photographerName.trim()) {
+    return null;
+  }
+  return {
+    id: raw.id,
+    imageUrl: raw.imageUrl,
+    fullImageUrl: isSafeHttpsUrl(raw.fullImageUrl) ? raw.fullImageUrl : raw.imageUrl,
+    color: typeof raw.color === "string" ? raw.color : "",
+    description: typeof raw.description === "string" ? raw.description : "",
+    photographerName: raw.photographerName.trim(),
+    photographerUrl: raw.photographerUrl,
+    photoUrl: raw.photoUrl,
+    downloadLocation: raw.downloadLocation,
+  };
+}
+
+function readUnsplashPhoto(theme) {
+  try {
+    return sanitizeUnsplashPhoto(JSON.parse(localStorage.getItem(unsplashPhotoStorageKey(theme)) || "null"));
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveUnsplashPhoto(theme, photo) {
+  try {
+    localStorage.setItem(unsplashPhotoStorageKey(theme), JSON.stringify(photo));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function readUnsplashPreferences() {
+  try {
+    unsplashEnabled = localStorage.getItem(STORAGE_KEYS.unsplashEnabled) !== "off";
+    const savedIntensity = localStorage.getItem(STORAGE_KEYS.unsplashIntensity);
+    unsplashIntensity = UNSPLASH_INTENSITIES.includes(savedIntensity) ? savedIntensity : "normal";
+  } catch (error) {
+    unsplashEnabled = true;
+    unsplashIntensity = "normal";
+  }
+  document.documentElement.setAttribute("data-background-intensity", unsplashIntensity);
+}
+
+function notifyUnsplashChange(status = "") {
+  document.dispatchEvent(new CustomEvent("homepage:unsplash-change", {
+    detail: { enabled: unsplashEnabled, intensity: unsplashIntensity, loading: unsplashLoading, status },
+  }));
+}
+
+function renderUnsplashFooter(photo) {
+  const defaultFooter = document.getElementById("footer-default");
+  const credit = document.getElementById("footer-photo-credit");
+  const photographer = document.getElementById("photo-photographer-link");
+  const viewPhoto = document.getElementById("photo-view-link");
+  if (!defaultFooter || !credit) return;
+
+  const showCredit = Boolean(photo && unsplashEnabled);
+  defaultFooter.hidden = showCredit;
+  credit.hidden = !showCredit;
+  if (!showCredit) return;
+  photographer.textContent = photo.photographerName;
+  photographer.href = photo.photographerUrl;
+  viewPhoto.href = photo.photoUrl;
+}
+
+function clearUnsplashBackground() {
+  unsplashRequestToken += 1;
+  activeUnsplashPhoto = null;
+  activeUnsplashTheme = null;
+  document.documentElement.setAttribute("data-has-background", "false");
+  document.querySelectorAll(".unsplash-photo-layer").forEach((layer) => layer.classList.remove("is-visible"));
+  renderUnsplashFooter(null);
+}
+
+function preloadUnsplashPhoto(photo) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Background image could not be loaded"));
+    image.src = photo.imageUrl;
+  });
+}
+
+function applyPreloadedUnsplashPhoto(photo, theme) {
+  const layers = Array.from(document.querySelectorAll(".unsplash-photo-layer"));
+  if (layers.length < 2) return;
+  const nextLayerIndex = activeUnsplashPhoto ? (activeUnsplashLayer + 1) % layers.length : activeUnsplashLayer;
+  const nextLayer = layers[nextLayerIndex];
+  nextLayer.classList.remove("is-visible");
+  nextLayer.style.backgroundImage = `url(${JSON.stringify(photo.imageUrl)})`;
+  void nextLayer.offsetWidth;
+  nextLayer.classList.add("is-visible");
+  layers.forEach((layer, index) => {
+    if (index !== nextLayerIndex) layer.classList.remove("is-visible");
+  });
+  activeUnsplashLayer = nextLayerIndex;
+  activeUnsplashPhoto = photo;
+  activeUnsplashTheme = theme;
+  document.documentElement.setAttribute("data-has-background", "true");
+  renderUnsplashFooter(photo);
+}
+
+function trackUnsplashSelection(photo) {
+  fetch(`${UNSPLASH_WORKER_URL}/track`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ downloadLocation: photo.downloadLocation }),
+    keepalive: true,
+  }).catch(() => { /* Attribution tracking must never affect the homepage. */ });
+}
+
+async function fetchUnsplashPhoto(theme, requestToken) {
+  const response = await fetch(`${UNSPLASH_WORKER_URL}/random?theme=${encodeURIComponent(theme)}`);
+  if (!response.ok) throw new Error("Background service unavailable");
+  const photo = sanitizeUnsplashPhoto(await response.json());
+  if (!photo) throw new Error("Background service returned invalid data");
+  await preloadUnsplashPhoto(photo);
+  if (requestToken !== unsplashRequestToken || !unsplashEnabled ||
+      document.documentElement.getAttribute("data-theme") !== theme) return false;
+  saveUnsplashPhoto(theme, photo);
+  applyPreloadedUnsplashPhoto(photo, theme);
+  trackUnsplashSelection(photo);
+  return true;
+}
+
+async function applyUnsplashForTheme(theme, forceNew = false) {
+  const requestToken = ++unsplashRequestToken;
+  if (!unsplashEnabled) {
+    clearUnsplashBackground();
+    notifyUnsplashChange();
+    return false;
+  }
+
+  if (activeUnsplashTheme !== theme && !forceNew) {
+    activeUnsplashPhoto = null;
+    activeUnsplashTheme = null;
+    document.documentElement.setAttribute("data-has-background", "false");
+    document.querySelectorAll(".unsplash-photo-layer").forEach((layer) => layer.classList.remove("is-visible"));
+    renderUnsplashFooter(null);
+  }
+
+  const stored = forceNew ? null : readUnsplashPhoto(theme);
+  unsplashLoading = true;
+  notifyUnsplashChange(stored ? "Loading saved background…" : "Finding a background…");
+  try {
+    let selected = true;
+    if (stored) {
+      await preloadUnsplashPhoto(stored);
+      if (requestToken !== unsplashRequestToken || !unsplashEnabled ||
+          document.documentElement.getAttribute("data-theme") !== theme) selected = false;
+      if (!selected) return false;
+      applyPreloadedUnsplashPhoto(stored, theme);
+    } else {
+      selected = await fetchUnsplashPhoto(theme, requestToken);
+    }
+    unsplashLoading = false;
+    if (!selected) return false;
+    notifyUnsplashChange("Background ready");
+    return true;
+  } catch (error) {
+    // Keep the current photo for a failed replacement, otherwise reveal the CSS fallback.
+    if (!activeUnsplashPhoto || activeUnsplashTheme !== theme) clearUnsplashBackground();
+    unsplashLoading = false;
+    notifyUnsplashChange("Could not load a background");
+    return false;
+  }
+}
+
+function setUnsplashEnabled(enabled) {
+  unsplashEnabled = enabled === true;
+  try {
+    localStorage.setItem(STORAGE_KEYS.unsplashEnabled, unsplashEnabled ? "on" : "off");
+  } catch (error) { /* The live preference still works for this session. */ }
+  const theme = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  if (unsplashEnabled) applyUnsplashForTheme(theme);
+  else clearUnsplashBackground();
+  notifyUnsplashChange();
+}
+
+function setUnsplashIntensity(intensity) {
+  unsplashIntensity = UNSPLASH_INTENSITIES.includes(intensity) ? intensity : "normal";
+  document.documentElement.setAttribute("data-background-intensity", unsplashIntensity);
+  try {
+    localStorage.setItem(STORAGE_KEYS.unsplashIntensity, unsplashIntensity);
+  } catch (error) { /* The live preference still works for this session. */ }
+  notifyUnsplashChange();
+}
+
+function requestAnotherUnsplashBackground() {
+  if (unsplashLoading) return Promise.resolve(false);
+  if (!unsplashEnabled) {
+    unsplashEnabled = true;
+    try { localStorage.setItem(STORAGE_KEYS.unsplashEnabled, "on"); } catch (error) { /* session only */ }
+  }
+  const theme = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  return applyUnsplashForTheme(theme, true);
+}
+
+function getUnsplashPreferences() {
+  return { enabled: unsplashEnabled, intensity: unsplashIntensity, loading: unsplashLoading };
+}
+
+function initUnsplashBackground() {
+  const anotherButton = document.getElementById("footer-another-background");
+  if (anotherButton) anotherButton.addEventListener("click", requestAnotherUnsplashBackground);
+}
+
+/* ------------------------------------------------------------------ */
 /* Theme                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -660,6 +932,7 @@ function applyTheme(theme) {
       theme === "light" ? "Switch to dark mode" : "Switch to light mode"
     );
   }
+  if (document.getElementById("unsplash-background")) applyUnsplashForTheme(theme);
 }
 
 /* Color theme ("palette") — independent of light/dark mode; the two
@@ -679,6 +952,15 @@ function applyDensity(density) {
     "data-density",
     isKnownDensity(density) ? density : "comfortable"
   );
+}
+
+function applyAppearance(appearance) {
+  const root = document.documentElement;
+  const attrs = { cardStyle: "data-card-style", cornerStyle: "data-corner-style", ambience: "data-ambience" };
+  Object.keys(attrs).forEach((key) => {
+    root.setAttribute(attrs[key], APPEARANCE_OPTIONS[key].includes(appearance[key])
+      ? appearance[key] : APPEARANCE_DEFAULTS[key]);
+  });
 }
 
 // An earlier version stored the color theme in its own localStorage key.
@@ -1023,6 +1305,7 @@ function applyConfig(config) {
   applyWeatherSettings(config);
   applyPalette(config.theme.palette);
   applyDensity(config.layout.density);
+  applyAppearance(config.appearance);
 }
 
 function initApp() {
@@ -1031,8 +1314,10 @@ function initApp() {
   const base = typeof homepageConfig !== "undefined" ? homepageConfig : null;
   const config = migrateLegacyPalette(sanitizeConfig(stored !== null ? stored : base));
 
+  readUnsplashPreferences();
   applyConfig(config);
   initTheme(config);
+  initUnsplashBackground();
   bindWeatherEvents();
   startClock();
   bindSearchEvents();

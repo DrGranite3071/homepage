@@ -66,6 +66,55 @@
     return;
   }
 
+  const tablist = dialog.querySelector('[role="tablist"]');
+  const tabs = Array.from(dialog.querySelectorAll('[role="tab"]'));
+  const panelScroller = dialog.querySelector(".settings-content");
+
+  function activateTab(tab, focus = false) {
+    if (!tab) return;
+    tabs.forEach((item) => {
+      const active = item === tab;
+      item.setAttribute("aria-selected", String(active));
+      item.tabIndex = active ? 0 : -1;
+      const panel = document.getElementById(item.getAttribute("aria-controls"));
+      if (panel) panel.hidden = !active;
+    });
+    if (panelScroller) panelScroller.scrollTop = 0;
+    tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (focus) {
+      tab.focus();
+    }
+  }
+
+  function syncTabOrientation() {
+    if (tablist) {
+      tablist.setAttribute("aria-orientation", window.innerWidth <= 640 ? "horizontal" : "vertical");
+    }
+  }
+
+  if (tablist) {
+    tablist.addEventListener("click", (event) => {
+      const tab = event.target.closest('[role="tab"]');
+      if (tab && tablist.contains(tab)) activateTab(tab);
+    });
+
+    tablist.addEventListener("keydown", (event) => {
+      const current = event.target.closest('[role="tab"]');
+      if (!current || !tablist.contains(current)) return;
+      const index = tabs.indexOf(current);
+      let next = index;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % tabs.length;
+      else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index - 1 + tabs.length) % tabs.length;
+      else if (event.key === "Home") next = 0;
+      else if (event.key === "End") next = tabs.length - 1;
+      else return;
+      event.preventDefault();
+      activateTab(tabs[next], true);
+    });
+    window.addEventListener("resize", syncTabOrientation);
+    syncTabOrientation();
+  }
+
   const els = {
     closeBtn: document.getElementById("settings-close"),
     displayName: document.getElementById("set-display-name"),
@@ -73,6 +122,7 @@
     greetingMorning: document.getElementById("set-greeting-morning"),
     greetingAfternoon: document.getElementById("set-greeting-afternoon"),
     greetingEvening: document.getElementById("set-greeting-evening"),
+    greetingSubtitle: document.getElementById("set-greeting-subtitle"),
     searchEngine: document.getElementById("set-search-engine"),
     searchPlaceholder: document.getElementById("set-search-placeholder"),
     showSearch: document.getElementById("set-show-search"),
@@ -81,6 +131,13 @@
     newTab: document.getElementById("set-new-tab"),
     palette: document.getElementById("set-palette"),
     density: document.getElementById("set-density"),
+    cardStyle: document.getElementById("set-card-style"),
+    cornerStyle: document.getElementById("set-corner-style"),
+    ambience: document.getElementById("set-ambience"),
+    backgroundPhotos: document.getElementById("set-background-photos"),
+    backgroundIntensity: document.getElementById("set-background-intensity"),
+    anotherBackground: document.getElementById("settings-another-background"),
+    backgroundStatus: document.getElementById("settings-background-status"),
     weatherLocation: document.getElementById("set-weather-location"),
     notesLabel: document.getElementById("set-notes-label"),
     notesPlaceholder: document.getElementById("set-notes-placeholder"),
@@ -150,6 +207,7 @@
     if (els.greetingMorning) els.greetingMorning.value = config.greeting.morning || "Good morning";
     if (els.greetingAfternoon) els.greetingAfternoon.value = config.greeting.afternoon || "Good afternoon";
     if (els.greetingEvening) els.greetingEvening.value = config.greeting.evening || "Good evening";
+    if (els.greetingSubtitle) els.greetingSubtitle.value = config.greeting.subtitle;
     if (els.searchPlaceholder) els.searchPlaceholder.value = config.search.placeholder;
     if (els.notesLabel) els.notesLabel.value = config.notes.label || "Today's focus";
     if (els.notesPlaceholder) els.notesPlaceholder.value = config.notes.placeholder || "What matters most today?";
@@ -166,6 +224,15 @@
       els.density.value = isKnownDensity(config.layout.density)
         ? config.layout.density
         : "comfortable";
+    }
+    if (els.cardStyle) els.cardStyle.value = config.appearance.cardStyle;
+    if (els.cornerStyle) els.cornerStyle.value = config.appearance.cornerStyle;
+    if (els.ambience) els.ambience.value = config.appearance.ambience;
+    if (typeof getUnsplashPreferences === "function") {
+      const background = getUnsplashPreferences();
+      if (els.backgroundPhotos) els.backgroundPhotos.checked = background.enabled;
+      if (els.backgroundIntensity) els.backgroundIntensity.value = background.intensity;
+      if (els.anotherBackground) els.anotherBackground.disabled = background.loading;
     }
     if (els.weatherLocation) {
       const weatherOptions = Array.isArray(config.weather && config.weather.locations)
@@ -661,7 +728,10 @@
   openBtn.addEventListener("click", () => {
     populateFields();
     renderGroupsEditor();
+    activateTab(tabs[0]);
+    syncTabOrientation();
     dialog.showModal();
+    if (tabs[0]) tabs[0].focus();
   });
 
   if (els.closeBtn) {
@@ -713,6 +783,12 @@
       updateConfig((draft) => {
         draft.greeting.evening = els.greetingEvening.value.trim() || "Good evening";
       });
+    });
+  }
+
+  if (els.greetingSubtitle) {
+    els.greetingSubtitle.addEventListener("change", () => {
+      updateConfig((draft) => { draft.greeting.subtitle = els.greetingSubtitle.value.trim(); });
     });
   }
 
@@ -774,6 +850,40 @@
       });
     });
   }
+
+  [[els.cardStyle, "cardStyle"], [els.cornerStyle, "cornerStyle"], [els.ambience, "ambience"]]
+    .forEach(([control, key]) => {
+      if (!control) return;
+      control.addEventListener("change", () => {
+        updateConfig((draft) => { draft.appearance[key] = control.value; });
+      });
+    });
+
+  if (els.backgroundPhotos) {
+    els.backgroundPhotos.addEventListener("change", () => {
+      setUnsplashEnabled(els.backgroundPhotos.checked);
+    });
+  }
+
+  if (els.backgroundIntensity) {
+    els.backgroundIntensity.addEventListener("change", () => {
+      setUnsplashIntensity(els.backgroundIntensity.value);
+    });
+  }
+
+  if (els.anotherBackground) {
+    els.anotherBackground.addEventListener("click", () => {
+      requestAnotherUnsplashBackground();
+    });
+  }
+
+  document.addEventListener("homepage:unsplash-change", (event) => {
+    const detail = event.detail || {};
+    if (els.backgroundPhotos) els.backgroundPhotos.checked = detail.enabled !== false;
+    if (els.backgroundIntensity && detail.intensity) els.backgroundIntensity.value = detail.intensity;
+    if (els.anotherBackground) els.anotherBackground.disabled = detail.loading === true;
+    if (els.backgroundStatus) els.backgroundStatus.textContent = detail.status || "";
+  });
 
   if (els.weatherLocation) {
     els.weatherLocation.addEventListener("change", () => {

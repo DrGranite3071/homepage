@@ -15,7 +15,7 @@
        NUMBER on all five links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=10"></script>
+  <script src="config.js?v=14"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -63,17 +63,43 @@
       }
       if (["compact", "comfortable", "spacious"].indexOf(density) === -1) density = "comfortable";
       document.documentElement.setAttribute("data-density", density);
+
+      var appearance = null;
+      try {
+        if (storedText) {
+          var savedAppearance = JSON.parse(storedText);
+          appearance = savedAppearance && savedAppearance.config && savedAppearance.config.appearance;
+        }
+      } catch (e) { /* storage unavailable or malformed */ }
+      appearance = appearance || (cfg && cfg.appearance) || {};
+      var choices = {
+        cardStyle: ["solid", "soft", "glass"],
+        cornerStyle: ["compact", "rounded", "soft"],
+        ambience: ["off", "subtle", "strong"]
+      };
+      var defaults = { cardStyle: "soft", cornerStyle: "rounded", ambience: "subtle" };
+      var attrs = { cardStyle: "data-card-style", cornerStyle: "data-corner-style", ambience: "data-ambience" };
+      Object.keys(choices).forEach(function (key) {
+        var value = choices[key].indexOf(appearance[key]) !== -1 ? appearance[key] : defaults[key];
+        document.documentElement.setAttribute(attrs[key], value);
+      });
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=10" />
+  <link rel="stylesheet" href="styles.css?v=14" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=10" defer></script>
-  <script src="settings.js?v=10" defer></script>
-  <script type="module" src="firebase-sync.js?v=10"></script>
+  <script src="script.js?v=14" defer></script>
+  <script src="settings.js?v=14" defer></script>
+  <script type="module" src="firebase-sync.js?v=14"></script>
 </head>
 <body>
+
+  <div id="unsplash-background" class="unsplash-background" aria-hidden="true">
+    <div class="unsplash-photo-layer"></div>
+    <div class="unsplash-photo-layer"></div>
+    <div class="unsplash-photo-overlay"></div>
+  </div>
 
   <a class="skip-link" href="#main-content">Skip to main content</a>
 
@@ -83,6 +109,7 @@
     <header class="site-header">
       <div class="greeting-block">
         <h1 id="greeting" class="greeting-text">Hello</h1>
+        <p id="greeting-subtitle" class="greeting-subtitle"></p>
         <p id="date" class="date-text"></p>
       </div>
 
@@ -90,12 +117,13 @@
         <p id="clock" class="clock-text">--:--:--</p>
         <button
           id="theme-toggle"
-          class="btn"
+          class="btn header-control"
           type="button"
         >
-          <span id="theme-toggle-label">Dark mode</span>
+          <span class="header-control-icon" aria-hidden="true">◐</span>
+          <span id="theme-toggle-label" class="visually-hidden">Dark mode</span>
         </button>
-        <button id="settings-open" class="btn" type="button">Settings</button>
+        <button id="settings-open" class="btn header-control" type="button" aria-label="Open settings" title="Settings"><span class="header-control-icon" aria-hidden="true">⚙</span></button>
       </div>
     </header>
 
@@ -115,10 +143,11 @@
             placeholder="Search the web"
             autocomplete="off"
           />
-          <button type="submit" class="btn btn-primary search-submit">Search</button>
+          <button type="submit" class="btn btn-primary search-submit" aria-label="Search the web">Search <span aria-hidden="true">↗</span></button>
         </form>
       </section>
 
+      <div class="utility-grid">
       <!-- ============================== WEATHER ============================= -->
       <section id="weather-section" class="weather-section" aria-labelledby="weather-heading">
         <div class="weather-card">
@@ -135,25 +164,17 @@
           </div>
 
           <div class="weather-main">
-            <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
             <div class="weather-reading">
               <p id="weather-temp" class="weather-temp">--°C</p>
               <p id="weather-condition" class="weather-condition">Loading forecast…</p>
             </div>
+            <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
           </div>
 
           <div class="weather-meta">
             <p id="weather-updated">Updated just now</p>
             <p id="weather-wind">Wind: -- km/h</p>
           </div>
-        </div>
-      </section>
-
-      <!-- ========================= SHORTCUT GROUPS ========================= -->
-      <section id="shortcuts-section" class="shortcuts-section" aria-labelledby="shortcuts-heading">
-        <h2 id="shortcuts-heading" class="visually-hidden">Shortcut groups</h2>
-        <div id="shortcut-groups" class="shortcut-groups">
-          <!-- Shortcut group cards are rendered here by script.js from config.js -->
         </div>
       </section>
 
@@ -174,11 +195,28 @@
           <p id="notes-status" class="notes-status" aria-live="polite"></p>
         </div>
       </section>
+      </div>
+
+      <!-- ========================= SHORTCUT GROUPS ========================= -->
+      <section id="shortcuts-section" class="shortcuts-section" aria-labelledby="shortcuts-heading">
+        <h2 id="shortcuts-heading" class="shortcuts-section-heading">Your spaces</h2>
+        <div id="shortcut-groups" class="shortcut-groups">
+          <!-- Shortcut group cards are rendered here by script.js from config.js -->
+        </div>
+      </section>
 
     </main>
 
     <footer class="site-footer">
-      <p>Personal homepage &mdash; local-first, with optional private cloud sync.</p>
+      <p id="footer-default">Personal homepage &mdash; local-first, with optional private cloud sync.</p>
+      <p id="footer-photo-credit" class="photo-credit" hidden>
+        Photo by <a id="photo-photographer-link" href="#" target="_blank" rel="noopener noreferrer"></a>
+        on <a href="https://unsplash.com/" target="_blank" rel="noopener noreferrer">Unsplash</a>
+        <span aria-hidden="true">&middot;</span>
+        <a id="photo-view-link" href="#" target="_blank" rel="noopener noreferrer">View photo</a>
+        <span aria-hidden="true">&middot;</span>
+        <button id="footer-another-background" class="footer-action" type="button">Another background</button>
+      </p>
     </footer>
 
   </div>
@@ -190,204 +228,277 @@
        inside #settings-groups is built dynamically. -->
   <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
     <div class="settings-body">
-
       <header class="settings-head">
         <h2 id="settings-title" class="settings-title">Settings</h2>
         <button id="settings-close" class="btn btn-ghost" type="button">Close</button>
       </header>
 
-      <p class="settings-hint">
-        Changes save automatically to this browser and override
-        <code>config.js</code>. They stay on this device &mdash; use
-        <strong>Export backup</strong> below to move them to another one.
-      </p>
+      <div class="settings-workspace">
+        <nav class="settings-nav" role="tablist" aria-label="Settings sections" aria-orientation="vertical">
+          <button id="settings-tab-general" class="settings-tab" type="button" role="tab" aria-selected="true" aria-controls="settings-panel-general" tabindex="0">General</button>
+          <button id="settings-tab-appearance" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-appearance" tabindex="-1">Appearance</button>
+          <button id="settings-tab-weather" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-weather" tabindex="-1">Weather</button>
+          <button id="settings-tab-shortcuts" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-shortcuts" tabindex="-1">Shortcuts</button>
+          <button id="settings-tab-notes" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-notes" tabindex="-1">Notes</button>
+          <button id="settings-tab-sync-backup" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-sync-backup" tabindex="-1">Sync &amp; Backup</button>
+          <button id="settings-tab-diagnostics" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="settings-panel-diagnostics" tabindex="-1">Diagnostics</button>
+        </nav>
 
-      <section class="settings-section" aria-labelledby="settings-profile-heading">
-        <h3 id="settings-profile-heading" class="settings-section-title">Profile</h3>
-        <div class="settings-field">
-          <label for="set-display-name">Display name</label>
-          <input id="set-display-name" class="settings-input" type="text" autocomplete="off" />
-        </div>
-        <div class="settings-field">
-          <label for="set-page-title">Browser tab title</label>
-          <input id="set-page-title" class="settings-input" type="text" autocomplete="off" />
-        </div>
-        <div class="settings-field">
-          <label for="set-greeting-morning">Morning greeting</label>
-          <input id="set-greeting-morning" class="settings-input" type="text" autocomplete="off" />
-        </div>
-        <div class="settings-field">
-          <label for="set-greeting-afternoon">Afternoon greeting</label>
-          <input id="set-greeting-afternoon" class="settings-input" type="text" autocomplete="off" />
-        </div>
-        <div class="settings-field">
-          <label for="set-greeting-evening">Evening greeting</label>
-          <input id="set-greeting-evening" class="settings-input" type="text" autocomplete="off" />
-        </div>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-search-heading">
-        <h3 id="settings-search-heading" class="settings-section-title">Search</h3>
-        <div class="settings-field">
-          <label for="set-search-engine">Search engine</label>
-          <select id="set-search-engine" class="settings-input"></select>
-        </div>
-        <div class="settings-field">
-          <label for="set-search-placeholder">Search box hint text</label>
-          <input id="set-search-placeholder" class="settings-input" type="text" autocomplete="off" />
-        </div>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-page-heading">
-        <h3 id="settings-page-heading" class="settings-section-title">Page</h3>
-        <label class="settings-check">
-          <input id="set-show-search" type="checkbox" />
-          <span>Show the search bar</span>
-        </label>
-        <label class="settings-check">
-          <input id="set-show-shortcuts" type="checkbox" />
-          <span>Show the shortcut groups</span>
-        </label>
-        <label class="settings-check">
-          <input id="set-show-notes" type="checkbox" />
-          <span>Show the notes area</span>
-        </label>
-        <label class="settings-check">
-          <input id="set-new-tab" type="checkbox" />
-          <span>Open shortcuts in a new tab</span>
-        </label>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-theme-heading">
-        <h3 id="settings-theme-heading" class="settings-section-title">Theme</h3>
-        <div class="settings-field">
-          <label for="set-palette">Color theme</label>
-          <select id="set-palette" class="settings-input">
-            <option value="default">Teal (default)</option>
-            <option value="indigo">Midnight indigo</option>
-          </select>
-        </div>
-        <p class="settings-note">
-          Every color theme has a dark and a light variation &mdash; switch
-          between them with the button in the top-right corner of the page.
-        </p>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-layout-heading">
-        <h3 id="settings-layout-heading" class="settings-section-title">Layout</h3>
-        <div class="settings-field">
-          <label for="set-density">Layout density</label>
-          <select id="set-density" class="settings-input">
-            <option value="compact">Compact</option>
-            <option value="comfortable">Comfortable</option>
-            <option value="spacious">Spacious</option>
-          </select>
-        </div>
-        <p class="settings-note">Controls card padding and the space between dashboard items.</p>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-weather-heading">
-        <h3 id="settings-weather-heading" class="settings-section-title">Weather</h3>
-        <div class="settings-field">
-          <label for="set-weather-location">Location</label>
-          <select id="set-weather-location" class="settings-input"></select>
-        </div>
-        <p class="settings-note">Choose the place to show in the weather card. Refresh keeps it current while you move between cities.</p>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-notes-heading">
-        <h3 id="settings-notes-heading" class="settings-section-title">Notes</h3>
-        <div class="settings-field">
-          <label for="set-notes-label">Notes heading</label>
-          <input id="set-notes-label" class="settings-input" type="text" autocomplete="off" />
-        </div>
-        <div class="settings-field">
-          <label for="set-notes-placeholder">Notes hint text</label>
-          <input id="set-notes-placeholder" class="settings-input" type="text" autocomplete="off" />
-        </div>
-      </section>
-
-      <section class="settings-section" aria-labelledby="settings-account-heading">
-        <h3 id="settings-account-heading" class="settings-section-title">Account &amp; cloud sync</h3>
-        <div id="sync-signed-out" class="sync-state">
-          <p class="settings-note">Optional manual sync. This homepage keeps working locally when signed out or offline.</p>
-          <button id="sync-sign-in" class="btn btn-primary" type="button">Sign in with Google</button>
-        </div>
-        <div id="sync-signed-in" class="sync-state" hidden>
-          <div class="sync-user">
-            <img id="sync-user-photo" class="sync-user-photo" alt="" hidden />
-            <div>
-              <p id="sync-user-name" class="sync-user-name"></p>
-              <p id="sync-user-email" class="settings-note"></p>
-            </div>
+        <div class="settings-content">
+          <div id="settings-panel-general" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-general" tabindex="0">
+            <h3 class="settings-panel-title">General</h3>
+            <p class="settings-hint">Changes save automatically to this browser and override <code>config.js</code>. Use Sync &amp; Backup to move them to another device.</p>
+            <section class="settings-section" aria-labelledby="settings-profile-heading">
+              <h4 id="settings-profile-heading" class="settings-section-title">Profile</h4>
+              <div class="settings-field">
+                <label for="set-display-name">Display name</label>
+                <input id="set-display-name" class="settings-input" type="text" autocomplete="off" />
+              </div>
+              <div class="settings-field">
+                <label for="set-page-title">Browser tab title</label>
+                <input id="set-page-title" class="settings-input" type="text" autocomplete="off" />
+              </div>
+              <h5 class="settings-subheading">Greeting</h5>
+              <div class="settings-field">
+                <label for="set-greeting-morning">Morning greeting</label>
+                <input id="set-greeting-morning" class="settings-input" type="text" autocomplete="off" />
+              </div>
+              <div class="settings-field">
+                <label for="set-greeting-afternoon">Afternoon greeting</label>
+                <input id="set-greeting-afternoon" class="settings-input" type="text" autocomplete="off" />
+              </div>
+              <div class="settings-field">
+                <label for="set-greeting-evening">Evening greeting</label>
+                <input id="set-greeting-evening" class="settings-input" type="text" autocomplete="off" />
+              </div>
+              <div class="settings-field">
+                <label for="set-greeting-subtitle">Header subtitle</label>
+                <input id="set-greeting-subtitle" class="settings-input" type="text" autocomplete="off" placeholder="Optional" />
+              </div>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-search-heading">
+              <h4 id="settings-search-heading" class="settings-section-title">Search</h4>
+              <div class="settings-field">
+                <label for="set-search-engine">Search engine</label>
+                <select id="set-search-engine" class="settings-input"></select>
+              </div>
+              <div class="settings-field">
+                <label for="set-search-placeholder">Search box hint text</label>
+                <input id="set-search-placeholder" class="settings-input" type="text" autocomplete="off" />
+              </div>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-page-heading">
+              <h4 id="settings-page-heading" class="settings-section-title">Page behavior</h4>
+              <label class="settings-check">
+                <input id="set-show-search" type="checkbox" />
+                <span>Show the search bar</span>
+              </label>
+              <label class="settings-check">
+                <input id="set-show-shortcuts" type="checkbox" />
+                <span>Show the shortcut groups</span>
+              </label>
+              <label class="settings-check">
+                <input id="set-show-notes" type="checkbox" />
+                <span>Show the notes area</span>
+              </label>
+              <label class="settings-check">
+                <input id="set-new-tab" type="checkbox" />
+                <span>Open shortcuts in a new tab</span>
+              </label>
+            </section>
           </div>
-          <div class="settings-field sync-auto-control">
-            <label for="sync-auto">Automatic sync</label>
-            <select id="sync-auto" class="settings-input">
-              <option value="off">Off</option>
-              <option value="on">On</option>
-            </select>
+
+          <div id="settings-panel-appearance" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-appearance" tabindex="0" hidden>
+            <h3 class="settings-panel-title">Appearance</h3>
+            <section class="settings-section" aria-labelledby="settings-theme-heading">
+              <h4 id="settings-theme-heading" class="settings-section-title">Theme</h4>
+              <div class="settings-field">
+                <label for="set-palette">Color theme</label>
+                <select id="set-palette" class="settings-input">
+                  <option value="default">Teal (default)</option>
+                  <option value="indigo">Midnight indigo</option>
+                </select>
+              </div>
+              <p class="settings-note">
+                Every color theme has a dark and a light variation &mdash; switch
+                between them with the button in the top-right corner of the page.
+              </p>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-layout-heading">
+              <h4 id="settings-layout-heading" class="settings-section-title">Layout</h4>
+              <div class="settings-field">
+                <label for="set-density">Layout density</label>
+                <select id="set-density" class="settings-input">
+                  <option value="compact">Compact</option>
+                  <option value="comfortable">Comfortable</option>
+                  <option value="spacious">Spacious</option>
+                </select>
+              </div>
+              <p class="settings-note">Controls card padding and the space between dashboard items.</p>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-appearance-heading">
+              <h4 id="settings-appearance-heading" class="settings-section-title">Surfaces</h4>
+              <div class="settings-field">
+                <label for="set-card-style">Card style</label>
+                <select id="set-card-style" class="settings-input">
+                  <option value="solid">Solid</option><option value="soft">Soft</option><option value="glass">Glass</option>
+                </select>
+              </div>
+              <div class="settings-field">
+                <label for="set-corner-style">Corner style</label>
+                <select id="set-corner-style" class="settings-input">
+                  <option value="compact">Compact</option><option value="rounded">Rounded</option><option value="soft">Soft</option>
+                </select>
+              </div>
+              <div class="settings-field">
+                <label for="set-ambience">Background ambience</label>
+                <select id="set-ambience" class="settings-input">
+                  <option value="off">Off</option><option value="subtle">Subtle</option><option value="strong">Strong</option>
+                </select>
+              </div>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-background-heading">
+              <h4 id="settings-background-heading" class="settings-section-title">Background</h4>
+              <label class="settings-check">
+                <input id="set-background-photos" type="checkbox" />
+                <span>Background photos</span>
+              </label>
+              <div class="settings-field">
+                <label for="set-background-intensity">Image intensity</label>
+                <select id="set-background-intensity" class="settings-input">
+                  <option value="soft">Soft</option>
+                  <option value="normal">Normal</option>
+                  <option value="strong">Strong</option>
+                </select>
+              </div>
+              <div class="settings-inline-actions">
+                <button id="settings-another-background" class="btn" type="button">Another background</button>
+                <p id="settings-background-status" class="settings-status" role="status" aria-live="polite"></p>
+              </div>
+              <p class="settings-note">A separate photo is remembered on this browser for dark and light mode.</p>
+            </section>
           </div>
-          <div id="sync-cloud-notice" class="sync-notice" hidden>
-            <strong>Cloud data is available.</strong>
-            <span>It has not been applied. Choose Download, keep this device as-is, or export a backup first.</span>
+
+          <div id="settings-panel-weather" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-weather" tabindex="0" hidden>
+            <h3 class="settings-panel-title">Weather</h3>
+            <section class="settings-section" aria-labelledby="settings-weather-heading">
+              <h4 id="settings-weather-heading" class="settings-section-title">Weather</h4>
+              <div class="settings-field">
+                <label for="set-weather-location">Location</label>
+                <select id="set-weather-location" class="settings-input"></select>
+              </div>
+              <p class="settings-note">Choose the place to show in the weather card. Refresh keeps it current while you move between cities.</p>
+            </section>
           </div>
-          <div class="sync-actions">
-            <button id="sync-upload" class="btn" type="button">Upload this device to cloud</button>
-            <button id="sync-download" class="btn" type="button">Download cloud data to this device</button>
-            <button id="sync-export" class="btn btn-ghost" type="button">Export local backup first</button>
-            <button id="sync-delete" class="btn btn-danger" type="button">Delete cloud copy</button>
-            <button id="sync-sign-out" class="btn btn-ghost" type="button">Sign out</button>
+
+          <div id="settings-panel-shortcuts" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-shortcuts" tabindex="0" hidden>
+            <h3 class="settings-panel-title">Shortcuts</h3>
+            <section class="settings-section" aria-labelledby="settings-groups-heading">
+              <h4 id="settings-groups-heading" class="settings-section-title">Shortcut groups</h4>
+              <p class="settings-note">
+                Web addresses must start with <code>https://</code>. Rows with an
+                empty or invalid address are kept here but not shown on the page.
+              </p>
+              <div id="settings-groups" class="settings-groups">
+                <!-- Group editors are rendered here by settings.js -->
+              </div>
+              <button id="settings-add-group" class="btn" type="button">+ Add group</button>
+            </section>
           </div>
-        </div>
-        <p id="sync-status" class="settings-status" role="status" aria-live="polite">Local only</p>
-        <p id="sync-last-time" class="settings-note"></p>
-        <p id="sync-revision" class="settings-note">Automatic sync: Off</p>
-      </section>
 
-      <section class="settings-section" aria-labelledby="settings-groups-heading">
-        <h3 id="settings-groups-heading" class="settings-section-title">Shortcut groups</h3>
-        <p class="settings-note">
-          Web addresses must start with <code>https://</code>. Rows with an
-          empty or invalid address are kept here but not shown on the page.
-        </p>
-        <div id="settings-groups" class="settings-groups">
-          <!-- Group editors are rendered here by settings.js -->
-        </div>
-        <button id="settings-add-group" class="btn" type="button">+ Add group</button>
-      </section>
+          <div id="settings-panel-notes" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-notes" tabindex="0" hidden>
+            <h3 class="settings-panel-title">Notes</h3>
+            <section class="settings-section" aria-labelledby="settings-notes-heading">
+              <h4 id="settings-notes-heading" class="settings-section-title">Notes</h4>
+              <div class="settings-field">
+                <label for="set-notes-label">Notes heading</label>
+                <input id="set-notes-label" class="settings-input" type="text" autocomplete="off" />
+              </div>
+              <div class="settings-field">
+                <label for="set-notes-placeholder">Notes hint text</label>
+                <input id="set-notes-placeholder" class="settings-input" type="text" autocomplete="off" />
+              </div>
+            </section>
+          </div>
 
-      <section class="settings-section" aria-labelledby="settings-backup-heading">
-        <h3 id="settings-backup-heading" class="settings-section-title">Backup</h3>
-        <p class="settings-note">
-          The backup file contains these settings plus your notes and theme
-          choice. Importing one replaces all of them.
-        </p>
-        <div class="settings-backup-actions">
-          <button id="settings-export" class="btn" type="button">Export backup</button>
-          <button id="settings-import" class="btn" type="button">Import backup</button>
-          <button id="settings-reset" class="btn" type="button">Reset local dashboard to config.js</button>
-        </div>
-        <div class="settings-field">
-          <label for="settings-import-text">Or paste a backup JSON below</label>
-          <textarea id="settings-import-text" class="settings-input" rows="4" spellcheck="false" placeholder="Paste homepage backup JSON or a config.js object"></textarea>
-        </div>
-        <div class="settings-backup-actions">
-          <button id="settings-import-text-btn" class="btn btn-ghost" type="button">Import pasted backup</button>
-        </div>
-        <input id="settings-import-input" type="file" accept=".json,application/json" hidden />
-        <p class="settings-note">Reset never deletes the cloud copy. If automatic sync is On, the confirmed local reset becomes the next synchronized version.</p>
-        <p id="settings-backup-status" class="settings-status" aria-live="polite"></p>
-      </section>
+          <div id="settings-panel-sync-backup" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-sync-backup" tabindex="0" hidden>
+            <h3 class="settings-panel-title">Sync &amp; Backup</h3>
+            <section class="settings-section" aria-labelledby="settings-account-heading">
+              <h4 id="settings-account-heading" class="settings-section-title">Account &amp; cloud sync</h4>
+              <div id="sync-signed-out" class="sync-state">
+                <p class="settings-note">Optional manual sync. This homepage keeps working locally when signed out or offline.</p>
+                <button id="sync-sign-in" class="btn btn-primary" type="button">Sign in with Google</button>
+              </div>
+              <div id="sync-signed-in" class="sync-state" hidden>
+                <div class="sync-user">
+                  <img id="sync-user-photo" class="sync-user-photo" alt="" hidden />
+                  <div>
+                    <p id="sync-user-name" class="sync-user-name"></p>
+                    <p id="sync-user-email" class="settings-note"></p>
+                  </div>
+                </div>
+                <div class="settings-field sync-auto-control">
+                  <label for="sync-auto">Automatic sync</label>
+                  <select id="sync-auto" class="settings-input">
+                    <option value="off">Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+                <div id="sync-cloud-notice" class="sync-notice" hidden>
+                  <strong>Cloud data is available.</strong>
+                  <span>It has not been applied. Choose Download, keep this device as-is, or export a backup first.</span>
+                </div>
+                <div class="sync-actions">
+                  <button id="sync-upload" class="btn" type="button">Upload this device to cloud</button>
+                  <button id="sync-download" class="btn" type="button">Download cloud data to this device</button>
+                  <button id="sync-export" class="btn btn-ghost" type="button">Export local backup first</button>
+                  <button id="sync-delete" class="btn btn-danger" type="button">Delete cloud copy</button>
+                  <button id="sync-sign-out" class="btn btn-ghost" type="button">Sign out</button>
+                </div>
+              </div>
+              <p id="sync-status" class="settings-status" role="status" aria-live="polite">Local only</p>
+              <p id="sync-last-time" class="settings-note"></p>
+              <p id="sync-revision" class="settings-note">Automatic sync: Off</p>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-backup-heading">
+              <h4 id="settings-backup-heading" class="settings-section-title">Backup</h4>
+              <p class="settings-note">
+                The backup file contains these settings plus your notes and theme
+                choice. Importing one replaces all of them.
+              </p>
+              <div class="settings-backup-actions">
+                <button id="settings-export" class="btn" type="button">Export backup</button>
+                <button id="settings-import" class="btn" type="button">Import backup</button>
+              </div>
+              <div class="settings-field">
+                <label for="settings-import-text">Or paste a backup JSON below</label>
+                <textarea id="settings-import-text" class="settings-input" rows="4" spellcheck="false" placeholder="Paste homepage backup JSON or a config.js object"></textarea>
+              </div>
+              <div class="settings-backup-actions">
+                <button id="settings-import-text-btn" class="btn btn-ghost" type="button">Import pasted backup</button>
+              </div>
+              <input id="settings-import-input" type="file" accept=".json,application/json" hidden />
+              <div class="settings-reset-block">
+                <h5 class="settings-subheading">Reset</h5>
+                <p class="settings-note">Reset never deletes the cloud copy. If automatic sync is On, the confirmed local reset becomes the next synchronized version.</p>
+                <button id="settings-reset" class="btn btn-danger" type="button">Reset local dashboard to config.js</button>
+              </div>
+              <p id="settings-backup-status" class="settings-status" aria-live="polite"></p>
+            </section>
+          </div>
 
-      <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
-        <h3 id="settings-diagnostics-heading" class="settings-section-title">Diagnostics</h3>
-        <p class="settings-note">Application build: <strong>2026.07.16-3</strong></p>
-      </section>
+          <div id="settings-panel-diagnostics" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-diagnostics" tabindex="0" hidden>
+            <h3 class="settings-panel-title">Diagnostics</h3>
+            <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
+              <h4 id="settings-diagnostics-heading" class="settings-section-title">Build information</h4>
+              <p class="settings-note">Application build: <strong>2026.09.22-2</strong></p>
+            </section>
+          </div>
 
+        </div>
+      </div>
     </div>
   </dialog>
-
   <dialog id="sync-initial-dialog" class="settings-dialog sync-decision-dialog" aria-labelledby="sync-initial-title">
     <div class="settings-body">
       <h2 id="sync-initial-title" class="settings-title">Choose the first automatic sync version</h2>
