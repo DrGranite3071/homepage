@@ -146,6 +146,19 @@ const homepageConfig = {
   },
 
   // ----------------------------------------------------------------
+  // WEATHER: current conditions for a chosen place
+  // ----------------------------------------------------------------
+  weather: {
+    enabled: true,
+    location: "Bucharest",
+    useBrowserLocation: false,
+    locations: [
+      { label: "Bucharest", latitude: 44.4268, longitude: 26.1025 },
+      { label: "Riga", latitude: 56.9496, longitude: 24.1052 },
+    ],
+  },
+
+  // ----------------------------------------------------------------
   // THEME: default appearance before the user picks one themselves
   // ----------------------------------------------------------------
   theme: {

@@ -93,6 +93,54 @@ function sanitizeGroups(rawGroups) {
 // raw input (config.js or an imported backup) is missing, malformed, or
 // has missing fields. This keeps the page from crashing just because a
 // settings file has a typo.
+function sanitizeWeather(raw) {
+  const fallback = {
+    enabled: true,
+    location: "Bucharest",
+    useBrowserLocation: false,
+    locations: [
+      { label: "Bucharest", latitude: 44.4268, longitude: 26.1025 },
+      { label: "Riga", latitude: 56.9496, longitude: 24.1052 },
+    ],
+  };
+
+  const base = raw && typeof raw === "object" ? raw : {};
+  const presetLocations = fallback.locations.map((entry) => ({ ...entry }));
+  const sourceLocations = Array.isArray(base.locations) && base.locations.length > 0
+    ? base.locations
+    : presetLocations;
+
+  const normalizedLocations = sourceLocations
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry) => ({
+      label: typeof entry.label === "string" && entry.label.trim() ? entry.label.trim() : "Location",
+      latitude: Number(entry.latitude),
+      longitude: Number(entry.longitude),
+    }))
+    .filter((entry) => Number.isFinite(entry.latitude) && Number.isFinite(entry.longitude));
+
+  const preferredLocations = normalizedLocations.length > 0
+    ? normalizedLocations.filter((entry) =>
+        presetLocations.some((preset) => preset.label === entry.label)
+      )
+    : [];
+
+  const finalLocations = preferredLocations.length > 0 ? preferredLocations.slice(0, 2) : presetLocations;
+
+  const normalized = {
+    enabled: base.enabled !== false,
+    location: typeof base.location === "string" && base.location.trim() ? base.location.trim() : fallback.location,
+    useBrowserLocation: base.useBrowserLocation === true,
+    locations: finalLocations,
+  };
+
+  if (!finalLocations.some((entry) => entry.label === normalized.location)) {
+    normalized.location = finalLocations[0].label;
+  }
+
+  return normalized;
+}
+
 function sanitizeConfig(raw) {
   const fallback = {
     user: { displayName: "there", pageTitle: "Homepage" },
@@ -111,6 +159,7 @@ function sanitizeConfig(raw) {
     behavior: { openLinksInNewTab: true },
     shortcutGroups: [],
     notes: { label: "Today's focus", placeholder: "What matters most today?" },
+    weather: sanitizeWeather(null),
     theme: { default: "dark", palette: "default" },
     layout: { density: "comfortable" },
   };
@@ -130,6 +179,7 @@ function sanitizeConfig(raw) {
     behavior: { ...fallback.behavior, ...(raw.behavior || {}) },
     shortcutGroups: sanitizeGroups(raw.shortcutGroups),
     notes: { ...fallback.notes, ...(raw.notes || {}) },
+    weather: sanitizeWeather(raw.weather),
     theme: { ...fallback.theme, ...(raw.theme || {}) },
     layout: { ...fallback.layout, ...(raw.layout || {}) },
   };
@@ -651,6 +701,289 @@ function migrateLegacyPalette(config) {
   return config;
 }
 
+function getWeatherCondition(code) {
+  const map = {
+    0: { icon: "☀️", label: "Clear" },
+    1: { icon: "🌤️", label: "Mostly clear" },
+    2: { icon: "⛅", label: "Partly cloudy" },
+    3: { icon: "☁️", label: "Cloudy" },
+    45: { icon: "🌫️", label: "Fog" },
+    48: { icon: "🌫️", label: "Depositing fog" },
+    51: { icon: "🌦️", label: "Light drizzle" },
+    53: { icon: "🌦️", label: "Drizzle" },
+    55: { icon: "🌧️", label: "Rain" },
+    56: { icon: "🌧️", label: "Freezing drizzle" },
+    57: { icon: "🌧️", label: "Heavy freezing drizzle" },
+    61: { icon: "🌧️", label: "Light rain" },
+    63: { icon: "🌧️", label: "Rain" },
+    65: { icon: "🌧️", label: "Heavy rain" },
+    66: { icon: "🌧️", label: "Freezing rain" },
+    67: { icon: "🌧️", label: "Heavy freezing rain" },
+    71: { icon: "🌨️", label: "Light snow" },
+    73: { icon: "🌨️", label: "Snow" },
+    75: { icon: "🌨️", label: "Heavy snow" },
+    77: { icon: "❄️", label: "Snow grains" },
+    80: { icon: "🌦️", label: "Rain showers" },
+    81: { icon: "🌧️", label: "Heavy showers" },
+    82: { icon: "⛈️", label: "Violent showers" },
+    85: { icon: "🌨️", label: "Snow showers" },
+    86: { icon: "🌨️", label: "Heavy snow showers" },
+    95: { icon: "⛈️", label: "Thunderstorm" },
+    96: { icon: "⛈️", label: "Thunderstorm with hail" },
+    99: { icon: "⛈️", label: "Heavy thunderstorm with hail" },
+  };
+
+  const entry = map[code] || { icon: "🌡️", label: "Conditions" };
+  return entry;
+}
+
+function getWeatherLocationByName(config, name) {
+  const list = Array.isArray(config.weather.locations) ? config.weather.locations : [];
+  return list.find((entry) => entry && entry.label === name) || null;
+}
+
+function populateWeatherLocations(config) {
+  const select = document.getElementById("weather-location");
+  if (!select) return;
+
+  const list = Array.isArray(config.weather.locations) ? config.weather.locations : [];
+  if (!list.length) return;
+
+  select.innerHTML = "";
+  const browserOption = document.createElement("option");
+  browserOption.value = "browser";
+  browserOption.textContent = "Use my current location";
+  select.appendChild(browserOption);
+
+  list.forEach((entry) => {
+    const option = document.createElement("option");
+    option.value = entry.label;
+    option.textContent = entry.label;
+    select.appendChild(option);
+  });
+
+  if (config.weather.useBrowserLocation) {
+    select.value = "browser";
+  } else {
+    const currentLabel = config.weather.location || list[0].label;
+    select.value = list.some((entry) => entry.label === currentLabel) ? currentLabel : list[0].label;
+  }
+}
+
+function renderWeatherStatus(text) {
+  const updated = document.getElementById("weather-updated");
+  if (updated) updated.textContent = text;
+}
+
+function renderWeatherData(data, locationLabel) {
+  const tempEl = document.getElementById("weather-temp");
+  const conditionEl = document.getElementById("weather-condition");
+  const iconEl = document.getElementById("weather-icon");
+  const cityEl = document.getElementById("weather-heading");
+  const windEl = document.getElementById("weather-wind");
+
+  if (cityEl) cityEl.textContent = locationLabel || "Location";
+  if (tempEl && data && Number.isFinite(data.temperature)) {
+    tempEl.textContent = `${Math.round(data.temperature)}°C`;
+  }
+  if (conditionEl && data && data.condition) {
+    conditionEl.textContent = data.condition;
+  }
+  if (iconEl && data && data.icon) {
+    iconEl.textContent = data.icon;
+  }
+  if (windEl && data && Number.isFinite(data.wind)) {
+    windEl.textContent = `Wind: ${Math.round(data.wind)} km/h`;
+  }
+
+  const now = new Date();
+  const timeText = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  renderWeatherStatus(`Updated ${timeText}`);
+}
+
+async function fetchWeatherForLocation(location) {
+  const cityEl = document.getElementById("weather-heading");
+  const tempEl = document.getElementById("weather-temp");
+  const conditionEl = document.getElementById("weather-condition");
+
+  if (cityEl) cityEl.textContent = location.label || "Location";
+  if (tempEl) tempEl.textContent = "--°C";
+  if (conditionEl) conditionEl.textContent = "Loading forecast…";
+  renderWeatherStatus("Checking weather…");
+
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", String(location.latitude));
+  url.searchParams.set("longitude", String(location.longitude));
+  url.searchParams.set("current", "temperature_2m,weather_code,wind_speed_10m");
+  url.searchParams.set("timezone", "auto");
+  url.searchParams.set("forecast_days", "1");
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Weather request failed");
+    const data = await response.json();
+    const current = data.current;
+    const code = Number(current && current.weather_code);
+    const weather = getWeatherCondition(code);
+    const payload = {
+      temperature: Number(current && current.temperature_2m),
+      condition: weather.label,
+      icon: weather.icon,
+      wind: Number(current && current.wind_speed_10m),
+    };
+    renderWeatherData(payload, location.label);
+  } catch (error) {
+    console.warn("Weather could not be fetched.", error);
+    if (conditionEl) conditionEl.textContent = "Weather unavailable";
+    if (tempEl) tempEl.textContent = "--°C";
+    renderWeatherStatus("Unable to update weather");
+  }
+}
+
+function updateWeatherConfig(nextWeather) {
+  const config = sanitizeConfig({ ...getCurrentConfig(), weather: nextWeather });
+  currentConfig = config;
+  saveUserConfig(config);
+  applyConfig(config);
+}
+
+function bindWeatherEvents() {
+  const select = document.getElementById("weather-location");
+  const refresh = document.getElementById("weather-refresh");
+  if (!select) return;
+
+  select.addEventListener("change", () => {
+    const value = select.value;
+    const config = getCurrentConfig();
+    const list = Array.isArray(config.weather.locations) ? config.weather.locations : [];
+
+    if (value === "browser") {
+      if (!navigator.geolocation) {
+        renderWeatherStatus("This browser cannot access your location");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const customLocation = {
+            label: "Current location",
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          const nextWeather = {
+            ...config.weather,
+            location: customLocation.label,
+            useBrowserLocation: true,
+            locations: [customLocation, ...list.filter((item) => item.label !== "Current location")],
+          };
+          updateWeatherConfig(nextWeather);
+          fetchWeatherForLocation(customLocation);
+        },
+        () => {
+          renderWeatherStatus("Location access was denied");
+        },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+      return;
+    }
+
+    const match = getWeatherLocationByName(config, value) || list[0];
+    if (!match) return;
+
+    const nextWeather = {
+      ...config.weather,
+      location: match.label,
+      useBrowserLocation: false,
+    };
+    updateWeatherConfig(nextWeather);
+    fetchWeatherForLocation(match);
+  });
+
+  if (refresh) {
+    refresh.addEventListener("click", () => {
+      const config = getCurrentConfig();
+      if (config.weather.useBrowserLocation) {
+        if (!navigator.geolocation) {
+          renderWeatherStatus("Browser location access is unavailable");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const customLocation = {
+              label: "Current location",
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+            const nextWeather = {
+              ...config.weather,
+              location: customLocation.label,
+              useBrowserLocation: true,
+              locations: [customLocation, ...((Array.isArray(config.weather.locations) ? config.weather.locations : []).filter((item) => item.label !== "Current location"))],
+            };
+            updateWeatherConfig(nextWeather);
+            fetchWeatherForLocation(customLocation);
+          },
+          () => {
+            renderWeatherStatus("Location access was denied");
+          },
+          { enableHighAccuracy: true, timeout: 15000 }
+        );
+        return;
+      }
+
+      const match = getWeatherLocationByName(config, config.weather.location) || config.weather.locations[0];
+      if (match) fetchWeatherForLocation(match);
+    });
+  }
+}
+
+function applyWeatherSettings(config) {
+  const enabled = config.weather && config.weather.enabled !== false;
+  const section = document.getElementById("weather-section");
+  if (section) section.hidden = !enabled;
+
+  populateWeatherLocations(config);
+
+  const locationList = Array.isArray(config.weather.locations) ? config.weather.locations : [];
+  const match = config.weather.useBrowserLocation
+    ? { label: "Current location", latitude: 0, longitude: 0 }
+    : (getWeatherLocationByName(config, config.weather.location) || locationList[0]);
+
+  if (!match) return;
+  if (config.weather.useBrowserLocation) {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const nextLocation = {
+            label: "Current location",
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          renderWeatherData({
+            temperature: 0,
+            condition: "Checking weather",
+            icon: "📍",
+            wind: 0,
+          }, "Current location");
+          fetchWeatherForLocation(nextLocation);
+        },
+        () => {
+          renderWeatherData({
+            temperature: 0,
+            condition: "Location unavailable",
+            icon: "📍",
+            wind: 0,
+          }, "Current location");
+        },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+      return;
+    }
+  }
+
+  fetchWeatherForLocation(match);
+}
+
 function initTheme(config) {
   // The inline script in index.html already set data-theme and
   // data-palette before paint; this re-derives the same values so the
@@ -687,6 +1020,7 @@ function applyConfig(config) {
   applySearchSettings(config);
   renderShortcutGroups(config);
   applyNotesSettings(config);
+  applyWeatherSettings(config);
   applyPalette(config.theme.palette);
   applyDensity(config.layout.density);
 }
@@ -699,6 +1033,7 @@ function initApp() {
 
   applyConfig(config);
   initTheme(config);
+  bindWeatherEvents();
   startClock();
   bindSearchEvents();
   initNotes();

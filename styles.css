@@ -314,6 +314,95 @@ textarea:focus-visible {
 }
 
 /* ==========================================================================
+   6. WEATHER
+   ========================================================================== */
+
+.weather-section {
+  display: flex;
+  justify-content: center;
+}
+
+.weather-card {
+  width: min(100%, 700px);
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 1rem 1.1rem;
+}
+
+.weather-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.weather-label {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.weather-city {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.weather-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.weather-select {
+  min-width: 12rem;
+}
+
+.weather-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.weather-icon {
+  font-size: clamp(2.4rem, 4vw, 3.2rem);
+  line-height: 1;
+}
+
+.weather-reading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.weather-temp {
+  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.weather-condition {
+  color: var(--color-text-muted);
+}
+
+.weather-meta {
+  margin-top: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
    6. SHORTCUT GROUPS
    ========================================================================== */
 

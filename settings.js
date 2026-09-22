@@ -70,6 +70,9 @@
     closeBtn: document.getElementById("settings-close"),
     displayName: document.getElementById("set-display-name"),
     pageTitle: document.getElementById("set-page-title"),
+    greetingMorning: document.getElementById("set-greeting-morning"),
+    greetingAfternoon: document.getElementById("set-greeting-afternoon"),
+    greetingEvening: document.getElementById("set-greeting-evening"),
     searchEngine: document.getElementById("set-search-engine"),
     searchPlaceholder: document.getElementById("set-search-placeholder"),
     showSearch: document.getElementById("set-show-search"),
@@ -78,11 +81,16 @@
     newTab: document.getElementById("set-new-tab"),
     palette: document.getElementById("set-palette"),
     density: document.getElementById("set-density"),
+    weatherLocation: document.getElementById("set-weather-location"),
+    notesLabel: document.getElementById("set-notes-label"),
+    notesPlaceholder: document.getElementById("set-notes-placeholder"),
     groupsEditor: document.getElementById("settings-groups"),
     addGroupBtn: document.getElementById("settings-add-group"),
     exportBtn: document.getElementById("settings-export"),
     importBtn: document.getElementById("settings-import"),
     importInput: document.getElementById("settings-import-input"),
+    importText: document.getElementById("settings-import-text"),
+    importTextBtn: document.getElementById("settings-import-text-btn"),
     resetBtn: document.getElementById("settings-reset"),
     backupStatus: document.getElementById("settings-backup-status"),
   };
@@ -139,7 +147,12 @@
 
     if (els.displayName) els.displayName.value = config.user.displayName;
     if (els.pageTitle) els.pageTitle.value = config.user.pageTitle;
+    if (els.greetingMorning) els.greetingMorning.value = config.greeting.morning || "Good morning";
+    if (els.greetingAfternoon) els.greetingAfternoon.value = config.greeting.afternoon || "Good afternoon";
+    if (els.greetingEvening) els.greetingEvening.value = config.greeting.evening || "Good evening";
     if (els.searchPlaceholder) els.searchPlaceholder.value = config.search.placeholder;
+    if (els.notesLabel) els.notesLabel.value = config.notes.label || "Today's focus";
+    if (els.notesPlaceholder) els.notesPlaceholder.value = config.notes.placeholder || "What matters most today?";
 
     if (els.showSearch) els.showSearch.checked = config.sections.showSearch !== false;
     if (els.showShortcuts) els.showShortcuts.checked = config.sections.showShortcuts !== false;
@@ -153,6 +166,20 @@
       els.density.value = isKnownDensity(config.layout.density)
         ? config.layout.density
         : "comfortable";
+    }
+    if (els.weatherLocation) {
+      const weatherOptions = Array.isArray(config.weather && config.weather.locations)
+        ? config.weather.locations
+        : [];
+      els.weatherLocation.innerHTML = "";
+      weatherOptions.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.label;
+        option.textContent = item.label;
+        els.weatherLocation.appendChild(option);
+      });
+      const currentWeatherLocation = config.weather && config.weather.location ? config.weather.location : weatherOptions[0]?.label || "Bucharest";
+      els.weatherLocation.value = currentWeatherLocation;
     }
 
     populateEngineSelect(config);
@@ -593,6 +620,23 @@
     reader.readAsText(file);
   }
 
+  function importBackupFromText() {
+    const text = els.importText && els.importText.value ? els.importText.value.trim() : "";
+    if (!text) {
+      showBackupStatus("Paste a backup JSON object before importing.", true);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(text);
+      applyImportedData(parsed);
+      if (els.importText) els.importText.value = "";
+    } catch (error) {
+      console.warn("Could not import pasted backup JSON.", error);
+      showBackupStatus("Import failed: this is not valid JSON.", true);
+    }
+  }
+
   function resetToConfigFile() {
     const confirmed = window.confirm(
       "Discard every change made in this panel (including the color theme) and go back " +
@@ -648,6 +692,30 @@
     });
   }
 
+  if (els.greetingMorning) {
+    els.greetingMorning.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.greeting.morning = els.greetingMorning.value.trim() || "Good morning";
+      });
+    });
+  }
+
+  if (els.greetingAfternoon) {
+    els.greetingAfternoon.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.greeting.afternoon = els.greetingAfternoon.value.trim() || "Good afternoon";
+      });
+    });
+  }
+
+  if (els.greetingEvening) {
+    els.greetingEvening.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.greeting.evening = els.greetingEvening.value.trim() || "Good evening";
+      });
+    });
+  }
+
   if (els.searchEngine) {
     els.searchEngine.addEventListener("change", () => {
       const preset = SEARCH_PRESETS.find((entry) => entry.id === els.searchEngine.value);
@@ -671,6 +739,24 @@
     });
   }
 
+  if (els.notesLabel) {
+    els.notesLabel.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.notes.label = els.notesLabel.value.trim() || "Today's focus";
+      });
+      els.notesLabel.value = getCurrentConfig().notes.label;
+    });
+  }
+
+  if (els.notesPlaceholder) {
+    els.notesPlaceholder.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.notes.placeholder = els.notesPlaceholder.value.trim() || "What matters most today?";
+      });
+      els.notesPlaceholder.value = getCurrentConfig().notes.placeholder;
+    });
+  }
+
   if (els.palette) {
     els.palette.addEventListener("change", () => {
       updateConfig((draft) => {
@@ -685,6 +771,15 @@
         draft.layout.density = isKnownDensity(els.density.value)
           ? els.density.value
           : "comfortable";
+      });
+    });
+  }
+
+  if (els.weatherLocation) {
+    els.weatherLocation.addEventListener("change", () => {
+      updateConfig((draft) => {
+        draft.weather.location = els.weatherLocation.value || "Bucharest";
+        draft.weather.useBrowserLocation = false;
       });
     });
   }
@@ -731,6 +826,10 @@
       // Reset so importing the same file twice in a row still fires.
       els.importInput.value = "";
     });
+  }
+
+  if (els.importTextBtn) {
+    els.importTextBtn.addEventListener("click", importBackupFromText);
   }
 
   if (els.resetBtn) els.resetBtn.addEventListener("click", resetToConfigFile);

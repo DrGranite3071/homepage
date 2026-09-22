@@ -119,6 +119,36 @@
         </form>
       </section>
 
+      <!-- ============================== WEATHER ============================= -->
+      <section id="weather-section" class="weather-section" aria-labelledby="weather-heading">
+        <div class="weather-card">
+          <div class="weather-head">
+            <div>
+              <p class="weather-label">Weather</p>
+              <h2 id="weather-heading" class="weather-city">London</h2>
+            </div>
+            <div class="weather-actions">
+              <label for="weather-location" class="visually-hidden">Select weather location</label>
+              <select id="weather-location" class="settings-input weather-select" aria-label="Select weather location"></select>
+              <button id="weather-refresh" class="btn btn-ghost" type="button">Refresh</button>
+            </div>
+          </div>
+
+          <div class="weather-main">
+            <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
+            <div class="weather-reading">
+              <p id="weather-temp" class="weather-temp">--°C</p>
+              <p id="weather-condition" class="weather-condition">Loading forecast…</p>
+            </div>
+          </div>
+
+          <div class="weather-meta">
+            <p id="weather-updated">Updated just now</p>
+            <p id="weather-wind">Wind: -- km/h</p>
+          </div>
+        </div>
+      </section>
+
       <!-- ========================= SHORTCUT GROUPS ========================= -->
       <section id="shortcuts-section" class="shortcuts-section" aria-labelledby="shortcuts-heading">
         <h2 id="shortcuts-heading" class="visually-hidden">Shortcut groups</h2>
@@ -182,6 +212,18 @@
           <label for="set-page-title">Browser tab title</label>
           <input id="set-page-title" class="settings-input" type="text" autocomplete="off" />
         </div>
+        <div class="settings-field">
+          <label for="set-greeting-morning">Morning greeting</label>
+          <input id="set-greeting-morning" class="settings-input" type="text" autocomplete="off" />
+        </div>
+        <div class="settings-field">
+          <label for="set-greeting-afternoon">Afternoon greeting</label>
+          <input id="set-greeting-afternoon" class="settings-input" type="text" autocomplete="off" />
+        </div>
+        <div class="settings-field">
+          <label for="set-greeting-evening">Evening greeting</label>
+          <input id="set-greeting-evening" class="settings-input" type="text" autocomplete="off" />
+        </div>
       </section>
 
       <section class="settings-section" aria-labelledby="settings-search-heading">
@@ -244,6 +286,27 @@
         <p class="settings-note">Controls card padding and the space between dashboard items.</p>
       </section>
 
+      <section class="settings-section" aria-labelledby="settings-weather-heading">
+        <h3 id="settings-weather-heading" class="settings-section-title">Weather</h3>
+        <div class="settings-field">
+          <label for="set-weather-location">Location</label>
+          <select id="set-weather-location" class="settings-input"></select>
+        </div>
+        <p class="settings-note">Choose the place to show in the weather card. Refresh keeps it current while you move between cities.</p>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-notes-heading">
+        <h3 id="settings-notes-heading" class="settings-section-title">Notes</h3>
+        <div class="settings-field">
+          <label for="set-notes-label">Notes heading</label>
+          <input id="set-notes-label" class="settings-input" type="text" autocomplete="off" />
+        </div>
+        <div class="settings-field">
+          <label for="set-notes-placeholder">Notes hint text</label>
+          <input id="set-notes-placeholder" class="settings-input" type="text" autocomplete="off" />
+        </div>
+      </section>
+
       <section class="settings-section" aria-labelledby="settings-account-heading">
         <h3 id="settings-account-heading" class="settings-section-title">Account &amp; cloud sync</h3>
         <div id="sync-signed-out" class="sync-state">
@@ -304,6 +367,13 @@
           <button id="settings-export" class="btn" type="button">Export backup</button>
           <button id="settings-import" class="btn" type="button">Import backup</button>
           <button id="settings-reset" class="btn" type="button">Reset local dashboard to config.js</button>
+        </div>
+        <div class="settings-field">
+          <label for="settings-import-text">Or paste a backup JSON below</label>
+          <textarea id="settings-import-text" class="settings-input" rows="4" spellcheck="false" placeholder="Paste homepage backup JSON or a config.js object"></textarea>
+        </div>
+        <div class="settings-backup-actions">
+          <button id="settings-import-text-btn" class="btn btn-ghost" type="button">Import pasted backup</button>
         </div>
         <input id="settings-import-input" type="file" accept=".json,application/json" hidden />
         <p class="settings-note">Reset never deletes the cloud copy. If automatic sync is On, the confirmed local reset becomes the next synchronized version.</p>
