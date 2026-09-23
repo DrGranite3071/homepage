@@ -396,6 +396,30 @@ function applySearchSettings(config) {
   input.setAttribute("placeholder", config.search.placeholder);
 }
 
+function getDirectNavigationUrl(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || /\s/.test(text)) return null;
+
+  const hasHttpProtocol = /^https?:\/\//i.test(text);
+  const hostnamePattern = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?::\d{1,5})?(?:[/?#][^\s]*)?$/i;
+  if (!hasHttpProtocol && !hostnamePattern.test(text)) return null;
+
+  try {
+    const url = new URL(hasHttpProtocol ? text : `https://${text}`);
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || !url.hostname) return null;
+    return url.href;
+  } catch (error) {
+    return null;
+  }
+}
+
+function shouldAutoFocusSearch() {
+  if (typeof window.matchMedia !== "function") return true;
+  const hasFinePointer = window.matchMedia("(any-pointer: fine)").matches;
+  const isTouchOnly = window.matchMedia("(hover: none) and (pointer: coarse)").matches && !hasFinePointer;
+  return !isTouchOnly;
+}
+
 // Wires up the search behavior. Called exactly once at startup — the
 // listeners don't depend on the settings, so they never need re-binding.
 function bindSearchEvents() {
@@ -403,8 +427,8 @@ function bindSearchEvents() {
   const input = document.getElementById("search-input");
   if (!form || !input) return;
 
-  // Submitting via GET lets the browser handle query encoding safely.
-  // We only step in to stop empty or whitespace-only searches.
+  // Normal queries keep using the configured GET form so the selected
+  // engine and query parameter continue to work exactly as configured.
   form.addEventListener("submit", (event) => {
     const query = input.value.trim();
     if (!query) {
@@ -413,7 +437,22 @@ function bindSearchEvents() {
       return;
     }
     input.value = query;
+
+    const directUrl = getDirectNavigationUrl(query);
+    if (directUrl) {
+      event.preventDefault();
+      window.location.assign(directUrl);
+    }
   });
+
+  // Focus immediately for keyboard-oriented devices. Touch-only devices are
+  // excluded so loading the homepage does not summon the software keyboard.
+  if (shouldAutoFocusSearch()) {
+    window.requestAnimationFrame(() => {
+      const section = document.getElementById("search-section");
+      if (section && !section.hidden) input.focus({ preventScroll: true });
+    });
+  }
 
   // Press "/" anywhere on the page (outside a text field) to jump to
   // the search box — handy with a keyboard on desktop or Samsung DeX.
@@ -1057,26 +1096,76 @@ function renderWeatherStatus(text) {
   if (updated) updated.textContent = text;
 }
 
+function getWeatherNumber(value) {
+  if (value === null || value === undefined || value === "" || typeof value === "boolean") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatWeatherTemperature(value) {
+  const number = getWeatherNumber(value);
+  return number === null ? "--" : `${Math.round(number)}°C`;
+}
+
+function formatWeatherPercent(value) {
+  const number = getWeatherNumber(value);
+  return number === null ? "--" : `${Math.round(number)}%`;
+}
+
+function formatWeatherLocalTime(value) {
+  if (typeof value !== "string") return "--";
+  const match = value.match(/T(\d{2}:\d{2})/);
+  return match ? match[1] : "--";
+}
+
+function resetWeatherDetails() {
+  const placeholders = {
+    "weather-feels-like": "--",
+    "weather-humidity": "--",
+    "weather-high-low": "-- / --",
+    "weather-rain": "--",
+    "weather-sunrise": "--",
+    "weather-sunset": "--",
+    "weather-wind": "Wind: -- km/h",
+  };
+
+  Object.entries(placeholders).forEach(([id, text]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = text;
+  });
+}
+
 function renderWeatherData(data, locationLabel) {
   const tempEl = document.getElementById("weather-temp");
   const conditionEl = document.getElementById("weather-condition");
   const iconEl = document.getElementById("weather-icon");
   const cityEl = document.getElementById("weather-heading");
   const windEl = document.getElementById("weather-wind");
+  const feelsLikeEl = document.getElementById("weather-feels-like");
+  const humidityEl = document.getElementById("weather-humidity");
+  const highLowEl = document.getElementById("weather-high-low");
+  const rainEl = document.getElementById("weather-rain");
+  const sunriseEl = document.getElementById("weather-sunrise");
+  const sunsetEl = document.getElementById("weather-sunset");
 
   if (cityEl) cityEl.textContent = locationLabel || "Location";
-  if (tempEl && data && Number.isFinite(data.temperature)) {
-    tempEl.textContent = `${Math.round(data.temperature)}°C`;
-  }
+  if (tempEl) tempEl.textContent = formatWeatherTemperature(data && data.temperature);
   if (conditionEl && data && data.condition) {
     conditionEl.textContent = data.condition;
   }
   if (iconEl && data && data.icon) {
     iconEl.textContent = data.icon;
   }
-  if (windEl && data && Number.isFinite(data.wind)) {
-    windEl.textContent = `Wind: ${Math.round(data.wind)} km/h`;
+  const wind = getWeatherNumber(data && data.wind);
+  if (windEl) windEl.textContent = wind === null ? "Wind: -- km/h" : `Wind: ${Math.round(wind)} km/h`;
+  if (feelsLikeEl) feelsLikeEl.textContent = formatWeatherTemperature(data && data.feelsLike);
+  if (humidityEl) humidityEl.textContent = formatWeatherPercent(data && data.humidity);
+  if (highLowEl) {
+    highLowEl.textContent = `${formatWeatherTemperature(data && data.high)} / ${formatWeatherTemperature(data && data.low)}`;
   }
+  if (rainEl) rainEl.textContent = formatWeatherPercent(data && data.rainChance);
+  if (sunriseEl) sunriseEl.textContent = formatWeatherLocalTime(data && data.sunrise);
+  if (sunsetEl) sunsetEl.textContent = formatWeatherLocalTime(data && data.sunset);
 
   const now = new Date();
   const timeText = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -1091,12 +1180,14 @@ async function fetchWeatherForLocation(location) {
   if (cityEl) cityEl.textContent = location.label || "Location";
   if (tempEl) tempEl.textContent = "--°C";
   if (conditionEl) conditionEl.textContent = "Loading forecast…";
+  resetWeatherDetails();
   renderWeatherStatus("Checking weather…");
 
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", String(location.latitude));
   url.searchParams.set("longitude", String(location.longitude));
-  url.searchParams.set("current", "temperature_2m,weather_code,wind_speed_10m");
+  url.searchParams.set("current", "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m");
+  url.searchParams.set("daily", "temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset");
   url.searchParams.set("timezone", "auto");
   url.searchParams.set("forecast_days", "1");
 
@@ -1105,19 +1196,28 @@ async function fetchWeatherForLocation(location) {
     if (!response.ok) throw new Error("Weather request failed");
     const data = await response.json();
     const current = data.current;
-    const code = Number(current && current.weather_code);
+    const daily = data.daily || {};
+    const code = getWeatherNumber(current && current.weather_code);
     const weather = getWeatherCondition(code);
     const payload = {
-      temperature: Number(current && current.temperature_2m),
+      temperature: getWeatherNumber(current && current.temperature_2m),
+      feelsLike: getWeatherNumber(current && current.apparent_temperature),
+      humidity: getWeatherNumber(current && current.relative_humidity_2m),
       condition: weather.label,
       icon: weather.icon,
-      wind: Number(current && current.wind_speed_10m),
+      wind: getWeatherNumber(current && current.wind_speed_10m),
+      high: getWeatherNumber(Array.isArray(daily.temperature_2m_max) ? daily.temperature_2m_max[0] : null),
+      low: getWeatherNumber(Array.isArray(daily.temperature_2m_min) ? daily.temperature_2m_min[0] : null),
+      rainChance: getWeatherNumber(Array.isArray(daily.precipitation_probability_max) ? daily.precipitation_probability_max[0] : null),
+      sunrise: Array.isArray(daily.sunrise) ? daily.sunrise[0] : null,
+      sunset: Array.isArray(daily.sunset) ? daily.sunset[0] : null,
     };
     renderWeatherData(payload, location.label);
   } catch (error) {
     console.warn("Weather could not be fetched.", error);
     if (conditionEl) conditionEl.textContent = "Weather unavailable";
     if (tempEl) tempEl.textContent = "--°C";
+    resetWeatherDetails();
     renderWeatherStatus("Unable to update weather");
   }
 }
@@ -1242,19 +1342,19 @@ function applyWeatherSettings(config) {
             longitude: position.coords.longitude,
           };
           renderWeatherData({
-            temperature: 0,
+            temperature: null,
             condition: "Checking weather",
             icon: "📍",
-            wind: 0,
+            wind: null,
           }, "Current location");
           fetchWeatherForLocation(nextLocation);
         },
         () => {
           renderWeatherData({
-            temperature: 0,
+            temperature: null,
             condition: "Location unavailable",
             icon: "📍",
-            wind: 0,
+            wind: null,
           }, "Current location");
         },
         { enableHighAccuracy: true, timeout: 15000 }

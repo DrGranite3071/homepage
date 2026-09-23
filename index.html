@@ -15,7 +15,7 @@
        NUMBER on all five links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=14"></script>
+  <script src="config.js?v=20"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -86,12 +86,12 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=20" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=14" defer></script>
-  <script src="settings.js?v=14" defer></script>
-  <script type="module" src="firebase-sync.js?v=14"></script>
+  <script src="script.js?v=20" defer></script>
+  <script src="settings.js?v=20" defer></script>
+  <script type="module" src="firebase-sync.js?v=20"></script>
 </head>
 <body>
 
@@ -169,6 +169,33 @@
               <p id="weather-condition" class="weather-condition">Loading forecast…</p>
             </div>
             <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
+          </div>
+
+          <div class="weather-metrics" aria-label="Weather details">
+            <div class="weather-metric">
+              <span class="weather-metric-label">Feels like</span>
+              <strong id="weather-feels-like" class="weather-metric-value">--</strong>
+            </div>
+            <div class="weather-metric">
+              <span class="weather-metric-label">Humidity</span>
+              <strong id="weather-humidity" class="weather-metric-value">--</strong>
+            </div>
+            <div class="weather-metric">
+              <span class="weather-metric-label">High / Low</span>
+              <strong id="weather-high-low" class="weather-metric-value">-- / --</strong>
+            </div>
+            <div class="weather-metric">
+              <span class="weather-metric-label">Rain</span>
+              <strong id="weather-rain" class="weather-metric-value">--</strong>
+            </div>
+            <div class="weather-metric">
+              <span class="weather-metric-label">Sunrise</span>
+              <strong id="weather-sunrise" class="weather-metric-value">--</strong>
+            </div>
+            <div class="weather-metric">
+              <span class="weather-metric-label">Sunset</span>
+              <strong id="weather-sunset" class="weather-metric-value">--</strong>
+            </div>
           </div>
 
           <div class="weather-meta">
