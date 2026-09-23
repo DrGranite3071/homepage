@@ -150,7 +150,18 @@
     importTextBtn: document.getElementById("settings-import-text-btn"),
     resetBtn: document.getElementById("settings-reset"),
     backupStatus: document.getElementById("settings-backup-status"),
+    unsplashQuota: document.getElementById("diagnostics-unsplash-quota"),
   };
+
+  /* ---------------------------------------------------------------- */
+
+  function renderUnsplashDiagnostics(rateLimit) {
+    if (!els.unsplashQuota) return;
+    const quota = rateLimit || (typeof getUnsplashRateLimit === "function" ? getUnsplashRateLimit() : null);
+    els.unsplashQuota.textContent = quota
+      ? `Unsplash API: ${quota.remaining} / ${quota.limit} requests remaining this hour`
+      : "Unsplash API: no quota data yet";
+  }
 
   /* ---------------------------------------------------------------- */
   /* Saving edits                                                      */
@@ -233,6 +244,7 @@
       if (els.backgroundPhotos) els.backgroundPhotos.checked = background.enabled;
       if (els.backgroundIntensity) els.backgroundIntensity.value = background.intensity;
       if (els.anotherBackground) els.anotherBackground.disabled = background.loading;
+      renderUnsplashDiagnostics(background.rateLimit);
     }
     if (els.weatherLocation) {
       const weatherOptions = Array.isArray(config.weather && config.weather.locations)
@@ -883,6 +895,7 @@
     if (els.backgroundIntensity && detail.intensity) els.backgroundIntensity.value = detail.intensity;
     if (els.anotherBackground) els.anotherBackground.disabled = detail.loading === true;
     if (els.backgroundStatus) els.backgroundStatus.textContent = detail.status || "";
+    renderUnsplashDiagnostics(detail.rateLimit);
   });
 
   if (els.weatherLocation) {

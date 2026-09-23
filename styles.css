@@ -698,6 +698,8 @@ textarea:focus-visible {
    ========================================================================== */
 
 .notes-card {
+  display: flex;
+  flex-direction: column;
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -1269,9 +1271,10 @@ textarea:focus-visible {
 .notes-header { margin-bottom: 0.85rem; }
 .notes-heading { font-size: 1.08rem; letter-spacing: -0.025em; }
 #notes-clear { min-height: var(--touch-target); padding: 0.2rem 0.5rem; color: var(--color-text-muted); border-color: transparent; font-size: 0.82rem; }
-.notes-textarea { min-height: 8.5rem; resize: vertical; background: color-mix(in srgb, var(--color-bg-elevated) 70%, transparent); border-radius: var(--input-radius); padding: 0.85rem 1rem; font-size: 0.95rem; line-height: 1.65; }
+.notes-textarea { flex: 1 1 auto; min-height: 8.5rem; resize: none; background: color-mix(in srgb, var(--color-bg-elevated) 70%, transparent); border-radius: var(--input-radius); padding: 0.85rem 1rem; font-size: 0.95rem; line-height: 1.65; }
 .notes-textarea::placeholder { color: var(--color-text-muted); }
-.notes-status { margin-top: 0.45rem; font-size: 0.78rem; color: var(--color-accent); }
+.notes-status { min-height: 0; margin-top: 0.35rem; font-size: 0.78rem; color: var(--color-accent); }
+.notes-status:empty { display: none; }
 
 .shortcuts-section-heading { width: fit-content; margin-bottom: 0.8rem; padding-left: 0.1rem; font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: var(--color-text-muted); text-shadow: none; }
 :root[data-theme="light"] .shortcuts-section-heading { color: color-mix(in srgb, var(--color-text) 88%, black); }

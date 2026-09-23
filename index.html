@@ -15,7 +15,7 @@
        NUMBER on all five links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=20"></script>
+  <script src="config.js?v=21"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -86,12 +86,12 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=21" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=20" defer></script>
-  <script src="settings.js?v=20" defer></script>
-  <script type="module" src="firebase-sync.js?v=20"></script>
+  <script src="script.js?v=21" defer></script>
+  <script src="settings.js?v=21" defer></script>
+  <script type="module" src="firebase-sync.js?v=21"></script>
 </head>
 <body>
 
@@ -519,6 +519,10 @@
             <section class="settings-section" aria-labelledby="settings-diagnostics-heading">
               <h4 id="settings-diagnostics-heading" class="settings-section-title">Build information</h4>
               <p class="settings-note">Application build: <strong>2026.09.22-2</strong></p>
+            </section>
+            <section class="settings-section" aria-labelledby="settings-services-heading">
+              <h4 id="settings-services-heading" class="settings-section-title">External services</h4>
+              <p id="diagnostics-unsplash-quota" class="settings-note" aria-live="polite">Unsplash API: no quota data yet</p>
             </section>
           </div>
 

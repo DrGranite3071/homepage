@@ -29,6 +29,7 @@ const STORAGE_KEYS = {
   unsplashIntensity: "homepage.unsplash.intensity",
   unsplashDark: "homepage.unsplash.photo.dark",
   unsplashLight: "homepage.unsplash.photo.light",
+  unsplashRateLimit: "homepage.unsplash.rateLimit",
 };
 
 const UNSPLASH_WORKER_URL = "https://homepage-unsplash.clasaxiead.workers.dev";
@@ -71,6 +72,7 @@ let activeUnsplashTheme = null;
 let activeUnsplashLayer = 0;
 let unsplashRequestToken = 0;
 let unsplashLoading = false;
+let unsplashRateLimit = null;
 
 function getCurrentConfig() {
   return currentConfig;
@@ -746,6 +748,31 @@ function sanitizeUnsplashPhoto(raw) {
   };
 }
 
+function sanitizeUnsplashRateLimit(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const limit = Number(raw.limit);
+  const remaining = Number(raw.remaining);
+  if (!Number.isInteger(limit) || limit <= 0 ||
+      !Number.isInteger(remaining) || remaining < 0 || remaining > limit) return null;
+  return {
+    limit,
+    remaining,
+    observedAt: Number.isFinite(raw.observedAt) ? raw.observedAt : Date.now(),
+  };
+}
+
+function saveUnsplashRateLimit(rateLimit) {
+  const clean = sanitizeUnsplashRateLimit(rateLimit);
+  if (!clean) return false;
+  unsplashRateLimit = clean;
+  try {
+    localStorage.setItem(STORAGE_KEYS.unsplashRateLimit, JSON.stringify(clean));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 function readUnsplashPhoto(theme) {
   try {
     return sanitizeUnsplashPhoto(JSON.parse(localStorage.getItem(unsplashPhotoStorageKey(theme)) || "null"));
@@ -772,12 +799,23 @@ function readUnsplashPreferences() {
     unsplashEnabled = true;
     unsplashIntensity = "normal";
   }
+  try {
+    unsplashRateLimit = sanitizeUnsplashRateLimit(JSON.parse(localStorage.getItem(STORAGE_KEYS.unsplashRateLimit) || "null"));
+  } catch (error) {
+    unsplashRateLimit = null;
+  }
   document.documentElement.setAttribute("data-background-intensity", unsplashIntensity);
 }
 
 function notifyUnsplashChange(status = "") {
   document.dispatchEvent(new CustomEvent("homepage:unsplash-change", {
-    detail: { enabled: unsplashEnabled, intensity: unsplashIntensity, loading: unsplashLoading, status },
+    detail: {
+      enabled: unsplashEnabled,
+      intensity: unsplashIntensity,
+      loading: unsplashLoading,
+      rateLimit: unsplashRateLimit,
+      status,
+    },
   }));
 }
 
@@ -846,7 +884,9 @@ function trackUnsplashSelection(photo) {
 async function fetchUnsplashPhoto(theme, requestToken) {
   const response = await fetch(`${UNSPLASH_WORKER_URL}/random?theme=${encodeURIComponent(theme)}`);
   if (!response.ok) throw new Error("Background service unavailable");
-  const photo = sanitizeUnsplashPhoto(await response.json());
+  const payload = await response.json();
+  if (payload && payload.rateLimit) saveUnsplashRateLimit(payload.rateLimit);
+  const photo = sanitizeUnsplashPhoto(payload);
   if (!photo) throw new Error("Background service returned invalid data");
   await preloadUnsplashPhoto(photo);
   if (requestToken !== unsplashRequestToken || !unsplashEnabled ||
@@ -931,7 +971,11 @@ function requestAnotherUnsplashBackground() {
 }
 
 function getUnsplashPreferences() {
-  return { enabled: unsplashEnabled, intensity: unsplashIntensity, loading: unsplashLoading };
+  return { enabled: unsplashEnabled, intensity: unsplashIntensity, loading: unsplashLoading, rateLimit: unsplashRateLimit };
+}
+
+function getUnsplashRateLimit() {
+  return unsplashRateLimit;
 }
 
 function initUnsplashBackground() {
