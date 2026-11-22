@@ -1935,32 +1935,67 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 0.35rem;
-  padding: 0.3rem 0.45rem;
+  margin-top: 0.45rem;
+  padding: 0.42rem 0.55rem;
   color: var(--color-text-muted);
   cursor: pointer;
-  background: transparent;
-  border: 0;
-  border-top: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg-elevated) 56%, transparent);
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
   font-size: 0.72rem;
+  font-weight: 600;
+  transition: color var(--transition-speed) ease,
+    background-color var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
 }
 
-.shortcut-more:hover { color: var(--color-text); }
+.shortcut-more:hover,
+.shortcut-more:focus-visible {
+  color: var(--color-text);
+  background: var(--color-card-hover);
+  border-color: var(--surface-border);
+}
+
+.shortcut-more span:last-child {
+  transition: transform var(--transition-speed) ease;
+}
+
+.shortcut-more[aria-expanded="true"] span:last-child,
+.shortcut-group:hover .shortcut-more span:last-child,
+.shortcut-group:focus-within .shortcut-more span:last-child {
+  transform: rotate(180deg);
+}
 
 .shortcut-extra-panel {
   position: absolute;
-  top: calc(100% - 0.35rem);
+  top: calc(100% - 1px);
   left: -1px;
   right: -1px;
   display: none;
-  padding: 0.4rem 1rem 1rem;
-  background: var(--card-surface);
+  padding: 0.45rem 1rem 1rem;
+  background: var(--color-card-solid);
   border: 1px solid var(--surface-border);
   border-top: 0;
   border-radius: 0 0 var(--card-radius) var(--card-radius);
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.26);
-  backdrop-filter: var(--card-blur);
-  -webkit-backdrop-filter: var(--card-blur);
+  box-shadow: 0 24px 42px -20px rgba(0, 0, 0, 0.42);
+}
+
+.shortcut-extra-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 1rem;
+  right: 1rem;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.shortcut-group[data-has-overflow="true"][data-expanded="true"],
+.shortcut-group[data-has-overflow="true"]:focus-within {
+  background: var(--color-card-solid);
+  border-bottom-color: transparent;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
 }
 
 .shortcut-group[data-expanded="true"] .shortcut-extra-panel,
@@ -1969,6 +2004,13 @@ textarea:focus-visible {
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .shortcut-group[data-has-overflow="true"]:hover {
+    background: var(--color-card-solid);
+    border-bottom-color: transparent;
+    border-radius: var(--card-radius) var(--card-radius) 0 0;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+  }
+
   .shortcut-group:hover .shortcut-extra-panel { display: block; }
 }
 
@@ -2044,10 +2086,18 @@ textarea:focus-visible {
   .shortcut-extra-panel {
     position: static;
     margin: 0.3rem -0.2rem -0.2rem;
-    padding: 0.35rem 0.2rem 0.2rem;
+    padding: 0.5rem 0.2rem 0.2rem;
     background: transparent;
     border: 0;
     box-shadow: none;
+  }
+  .shortcut-extra-panel::before { left: 0.2rem; right: 0.2rem; }
+  .shortcut-group[data-has-overflow="true"][data-expanded="true"],
+  .shortcut-group[data-has-overflow="true"]:focus-within {
+    background: var(--card-surface);
+    border-bottom-color: var(--surface-border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--shadow-card);
   }
   .notes-card { grid-template-columns: 1fr; }
   .notes-header { grid-column: 1; grid-row: auto; align-items: center; }
