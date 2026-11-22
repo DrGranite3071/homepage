@@ -177,7 +177,7 @@ function sanitizeConfig(raw) {
       engine: "Google",
       actionUrl: "https://www.google.com/search",
       queryParameter: "q",
-      placeholder: "Search the web",
+      placeholder: "Search bookmarks or the web",
     },
     sections: { showSearch: true, showShortcuts: true, showNotes: true },
     behavior: { openLinksInNewTab: true },
@@ -395,7 +395,72 @@ function applySearchSettings(config) {
 
   form.setAttribute("action", config.search.actionUrl);
   input.setAttribute("name", config.search.queryParameter);
-  input.setAttribute("placeholder", config.search.placeholder);
+  const placeholder = typeof config.search.placeholder === "string" ? config.search.placeholder.trim() : "";
+  input.setAttribute(
+    "placeholder",
+    !placeholder || placeholder === "Search the web" ? "Search bookmarks or the web" : placeholder
+  );
+}
+
+function getSearchableBookmarks(config = currentConfig) {
+  const groups = Array.isArray(config && config.shortcutGroups) ? config.shortcutGroups : [];
+  return groups
+    .filter((group) => group && group.enabled !== false)
+    .flatMap((group) => {
+      const category = typeof group.title === "string" ? group.title.trim() : "Bookmarks";
+      return (Array.isArray(group.links) ? group.links : [])
+        .filter((link) => link && typeof link.name === "string" && isValidLinkUrl(link.url))
+        .map((link) => ({ ...link, category }));
+    });
+}
+
+function findBookmarkMatches(query, config = currentConfig) {
+  const needle = String(query || "").trim().toLocaleLowerCase();
+  if (!needle) return [];
+
+  return getSearchableBookmarks(config)
+    .map((bookmark, order) => {
+      const name = bookmark.name.toLocaleLowerCase();
+      const category = bookmark.category.toLocaleLowerCase();
+      const url = bookmark.url.toLocaleLowerCase();
+      let score = Number.POSITIVE_INFINITY;
+      if (name === needle) score = 0;
+      else if (name.startsWith(needle)) score = 1;
+      else if (name.includes(needle)) score = 2;
+      else if (category.includes(needle)) score = 3;
+      else if (url.includes(needle)) score = 4;
+      return { bookmark, order, score };
+    })
+    .filter((entry) => Number.isFinite(entry.score))
+    .sort((a, b) => a.score - b.score || a.order - b.order)
+    .slice(0, 6)
+    .map((entry) => entry.bookmark);
+}
+
+function openBookmark(bookmark, behavior = currentConfig && currentConfig.behavior) {
+  if (!bookmark || !isValidLinkUrl(bookmark.url)) return;
+  if (!behavior || behavior.openLinksInNewTab !== false) {
+    const opened = window.open(bookmark.url, "_blank", "noopener,noreferrer");
+    if (opened) return;
+  }
+  window.location.assign(bookmark.url);
+}
+
+function submitWebSearch(query) {
+  const config = currentConfig;
+  const directUrl = getDirectNavigationUrl(query);
+  if (directUrl) {
+    window.location.assign(directUrl);
+    return;
+  }
+
+  try {
+    const url = new URL(config.search.actionUrl);
+    url.searchParams.set(config.search.queryParameter, query);
+    window.location.assign(url.href);
+  } catch (error) {
+    console.warn("Could not build the configured search URL.", error);
+  }
 }
 
 function getDirectNavigationUrl(value) {
@@ -427,24 +492,141 @@ function shouldAutoFocusSearch() {
 function bindSearchEvents() {
   const form = document.getElementById("search-form");
   const input = document.getElementById("search-input");
-  if (!form || !input) return;
+  const results = document.getElementById("search-results");
+  if (!form || !input || !results) return;
+
+  let visibleResults = [];
+  let selectedIndex = -1;
+
+  function closeResults() {
+    results.hidden = true;
+    results.innerHTML = "";
+    input.setAttribute("aria-expanded", "false");
+    input.removeAttribute("aria-activedescendant");
+    visibleResults = [];
+    selectedIndex = -1;
+  }
+
+  function selectResult(index) {
+    const options = [...results.querySelectorAll("[role='option']")];
+    if (!options.length) return;
+    selectedIndex = (index + options.length) % options.length;
+    options.forEach((option, optionIndex) => {
+      const selected = optionIndex === selectedIndex;
+      option.setAttribute("aria-selected", String(selected));
+      option.classList.toggle("is-selected", selected);
+      if (selected) {
+        input.setAttribute("aria-activedescendant", option.id);
+        option.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
+
+  function activateResult(index) {
+    const result = visibleResults[index];
+    const query = input.value.trim();
+    if (!result || !query) return;
+    closeResults();
+    if (result.type === "bookmark") openBookmark(result.bookmark);
+    else submitWebSearch(query);
+  }
+
+  function renderResults() {
+    const query = input.value.trim();
+    if (!query) {
+      closeResults();
+      return;
+    }
+
+    const bookmarks = findBookmarkMatches(query);
+    visibleResults = bookmarks.map((bookmark) => ({ type: "bookmark", bookmark }));
+    visibleResults.push({ type: "web" });
+    selectedIndex = bookmarks.length ? 0 : visibleResults.length - 1;
+    results.innerHTML = "";
+
+    if (bookmarks.length) {
+      const label = document.createElement("p");
+      label.className = "search-results-label";
+      label.textContent = "Bookmarks";
+      results.appendChild(label);
+    }
+
+    visibleResults.forEach((result, index) => {
+      if (result.type === "web" && bookmarks.length) {
+        const divider = document.createElement("div");
+        divider.className = "search-results-divider";
+        results.appendChild(divider);
+      }
+
+      const option = document.createElement("button");
+      option.type = "button";
+      option.id = `search-result-${index}`;
+      option.className = `search-result search-result-${result.type}`;
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", String(index === selectedIndex));
+      option.classList.toggle("is-selected", index === selectedIndex);
+
+      const icon = document.createElement("span");
+      icon.className = "search-result-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = result.type === "bookmark"
+        ? ((result.bookmark.icon && String(result.bookmark.icon).trim()) || result.bookmark.name.charAt(0).toUpperCase())
+        : "↗";
+
+      const copy = document.createElement("span");
+      copy.className = "search-result-copy";
+      const title = document.createElement("strong");
+      title.textContent = result.type === "bookmark" ? result.bookmark.name : `Search the web for “${query}”`;
+      const meta = document.createElement("span");
+      meta.textContent = result.type === "bookmark" ? result.bookmark.category : currentConfig.search.engine;
+      copy.append(title, meta);
+
+      const action = document.createElement("span");
+      action.className = "search-result-action";
+      action.textContent = result.type === "bookmark" ? "Open" : "Search";
+      option.append(icon, copy, action);
+      option.addEventListener("pointermove", () => selectResult(index));
+      option.addEventListener("click", () => activateResult(index));
+      results.appendChild(option);
+    });
+
+    results.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+    selectResult(selectedIndex);
+  }
 
   // Normal queries keep using the configured GET form so the selected
   // engine and query parameter continue to work exactly as configured.
   form.addEventListener("submit", (event) => {
+    event.preventDefault();
     const query = input.value.trim();
     if (!query) {
-      event.preventDefault();
       input.focus();
       return;
     }
     input.value = query;
+    const bookmarks = findBookmarkMatches(query);
+    if (bookmarks.length) openBookmark(bookmarks[0]);
+    else submitWebSearch(query);
+  });
 
-    const directUrl = getDirectNavigationUrl(query);
-    if (directUrl) {
+  input.addEventListener("input", renderResults);
+  input.addEventListener("focus", renderResults);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      window.location.assign(directUrl);
+      if (results.hidden) renderResults();
+      selectResult(selectedIndex + (event.key === "ArrowDown" ? 1 : -1));
+    } else if (event.key === "Enter" && !results.hidden && selectedIndex >= 0) {
+      event.preventDefault();
+      activateResult(selectedIndex);
+    } else if (event.key === "Escape") {
+      closeResults();
     }
+  });
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!event.target.closest("#search-section")) closeResults();
   });
 
   // Focus immediately for keyboard-oriented devices. Touch-only devices are
@@ -456,19 +638,26 @@ function bindSearchEvents() {
     });
   }
 
-  // Press "/" anywhere on the page (outside a text field) to jump to
-  // the search box — handy with a keyboard on desktop or Samsung DeX.
+  // Cmd/Ctrl+K is the primary universal-search shortcut. "/" remains a
+  // convenient alternative for keyboard-focused desktop and DeX use.
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "/" || event.ctrlKey || event.altKey || event.metaKey) return;
+    const commandK = event.key.toLocaleLowerCase() === "k" && (event.metaKey || event.ctrlKey);
+    const slash = event.key === "/" && !event.ctrlKey && !event.altKey && !event.metaKey;
+    if (!commandK && !slash) return;
     const target = event.target;
     const typing =
       target instanceof HTMLInputElement ||
       target instanceof HTMLTextAreaElement ||
       (target instanceof HTMLElement && target.isContentEditable);
-    if (typing) return;
+    if (typing && !commandK) return;
     event.preventDefault();
     input.focus();
+    input.select();
+    renderResults();
   });
+
+  const shortcut = document.querySelector(".search-shortcut");
+  if (shortcut && !/Mac|iPhone|iPad/.test(navigator.platform || "")) shortcut.textContent = "Ctrl K";
 }
 
 /* ------------------------------------------------------------------ */
@@ -521,23 +710,32 @@ function createShortcutGroup(group, behavior) {
   const section = document.createElement("div");
   section.className = "shortcut-group";
 
+  const header = document.createElement("div");
+  header.className = "shortcut-group-header";
   const heading = document.createElement("h3");
   heading.className = "shortcut-group-title";
   heading.textContent = title;
-  section.appendChild(heading);
+  const count = document.createElement("span");
+  count.className = "shortcut-group-count";
+  count.textContent = String(Array.isArray(group.links) ? group.links.length : 0);
+  header.append(heading, count);
+  section.appendChild(header);
 
   const links = Array.isArray(group.links) ? group.links : [];
-  const list = document.createElement("ul");
-  list.className = "shortcut-list";
+  const pinnedList = document.createElement("ul");
+  pinnedList.className = "shortcut-list shortcut-list-pinned";
+  const extraList = document.createElement("ul");
+  extraList.className = "shortcut-list shortcut-list-extra";
 
   let addedCount = 0;
   links.forEach((link) => {
     const li = createShortcutLink(link, behavior);
     if (li) {
-      list.appendChild(li);
+      (addedCount < 4 ? pinnedList : extraList).appendChild(li);
       addedCount += 1;
     }
   });
+  count.textContent = String(addedCount);
 
   if (addedCount === 0) {
     const empty = document.createElement("p");
@@ -545,10 +743,58 @@ function createShortcutGroup(group, behavior) {
     empty.textContent = "No links yet — add some in Settings.";
     section.appendChild(empty);
   } else {
-    section.appendChild(list);
+    section.appendChild(pinnedList);
+  }
+
+  if (extraList.children.length) {
+    const panelId = `shortcut-extra-${Math.random().toString(36).slice(2, 9)}`;
+    const moreButton = document.createElement("button");
+    moreButton.className = "shortcut-more";
+    moreButton.type = "button";
+    moreButton.setAttribute("aria-expanded", "false");
+    moreButton.setAttribute("aria-controls", panelId);
+    moreButton.innerHTML = `<span>${extraList.children.length} more</span><span aria-hidden="true">⌄</span>`;
+
+    const extraPanel = document.createElement("div");
+    extraPanel.id = panelId;
+    extraPanel.className = "shortcut-extra-panel";
+    extraPanel.appendChild(extraList);
+    section.dataset.expanded = "false";
+    section.append(moreButton, extraPanel);
+
+    moreButton.addEventListener("click", () => {
+      const expanded = section.dataset.expanded === "true";
+      document.querySelectorAll(".shortcut-group[data-expanded='true']").forEach((openGroup) => {
+        if (openGroup !== section) {
+          openGroup.dataset.expanded = "false";
+          openGroup.querySelector(".shortcut-more")?.setAttribute("aria-expanded", "false");
+        }
+      });
+      section.dataset.expanded = String(!expanded);
+      moreButton.setAttribute("aria-expanded", String(!expanded));
+    });
   }
 
   return section;
+}
+
+function bindShortcutOverlayEvents() {
+  document.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".shortcut-group")) return;
+    document.querySelectorAll(".shortcut-group[data-expanded='true']").forEach((group) => {
+      group.dataset.expanded = "false";
+      group.querySelector(".shortcut-more")?.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    document.querySelectorAll(".shortcut-group[data-expanded='true']").forEach((group) => {
+      group.dataset.expanded = "false";
+      group.querySelector(".shortcut-more")?.setAttribute("aria-expanded", "false");
+      group.querySelector(".shortcut-more")?.focus();
+    });
+  });
 }
 
 function renderShortcutGroups(config) {
@@ -1465,6 +1711,7 @@ function initApp() {
   bindWeatherEvents();
   startClock();
   bindSearchEvents();
+  bindShortcutOverlayEvents();
   initNotes();
   // The Settings panel itself is set up by settings.js, which runs after
   // this file (both are deferred, and defer scripts run in file order).

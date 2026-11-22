@@ -60,7 +60,7 @@ const homepageConfig = {
     // The URL query parameter the engine expects, e.g. ?q=your+search
     queryParameter: "q",
     // EDIT HERE: the hint text shown inside the empty search box
-    placeholder: "Search the web",
+    placeholder: "Search bookmarks or the web",
   },
 
   // ----------------------------------------------------------------
