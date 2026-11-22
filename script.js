@@ -759,6 +759,7 @@ function createShortcutGroup(group, behavior) {
     extraPanel.id = panelId;
     extraPanel.className = "shortcut-extra-panel";
     extraPanel.appendChild(extraList);
+    section.dataset.hasOverflow = "true";
     section.dataset.expanded = "false";
     section.append(moreButton, extraPanel);
 
