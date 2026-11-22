@@ -15,7 +15,7 @@
        NUMBER on all five links whenever you change any css/js file. -->
 
   <!-- config.js MUST load before script.js: both read homepageConfig -->
-  <script src="config.js?v=21"></script>
+  <script src="config.js?v=22"></script>
   <script>
     // Apply the saved (or configured) theme and color theme before the
     // first paint so the page never flashes the wrong colors while
@@ -86,12 +86,12 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="styles.css?v=21" />
+  <link rel="stylesheet" href="styles.css?v=22" />
   <!-- Deferred scripts run in order: script.js renders the page and defines
        the config helpers, then settings.js builds the Settings panel. -->
-  <script src="script.js?v=21" defer></script>
-  <script src="settings.js?v=21" defer></script>
-  <script type="module" src="firebase-sync.js?v=21"></script>
+  <script src="script.js?v=22" defer></script>
+  <script src="settings.js?v=22" defer></script>
+  <script type="module" src="firebase-sync.js?v=22"></script>
 </head>
 <body>
 
@@ -114,6 +114,65 @@
       </div>
 
       <div class="header-right">
+        <section id="weather-section" class="weather-section" aria-labelledby="weather-heading">
+          <details id="weather-popover" class="weather-popover">
+            <summary class="weather-summary" aria-label="Open weather details">
+              <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
+              <span class="weather-summary-copy">
+                <strong id="weather-temp" class="weather-temp">--°C</strong>
+                <span id="weather-condition" class="weather-condition">Loading…</span>
+              </span>
+              <span id="weather-heading" class="weather-city">London</span>
+              <span class="weather-chevron" aria-hidden="true">⌄</span>
+            </summary>
+
+            <div class="weather-card">
+              <div class="weather-head">
+                <div>
+                  <p class="weather-label">Local weather</p>
+                  <p class="weather-panel-title">Current conditions</p>
+                </div>
+                <div class="weather-actions">
+                  <label for="weather-location" class="visually-hidden">Select weather location</label>
+                  <select id="weather-location" class="settings-input weather-select" aria-label="Select weather location"></select>
+                  <button id="weather-refresh" class="btn btn-ghost" type="button">Refresh</button>
+                </div>
+              </div>
+
+              <div class="weather-metrics" aria-label="Weather details">
+                <div class="weather-metric">
+                  <span class="weather-metric-label">Feels like</span>
+                  <strong id="weather-feels-like" class="weather-metric-value">--</strong>
+                </div>
+                <div class="weather-metric">
+                  <span class="weather-metric-label">Humidity</span>
+                  <strong id="weather-humidity" class="weather-metric-value">--</strong>
+                </div>
+                <div class="weather-metric">
+                  <span class="weather-metric-label">High / Low</span>
+                  <strong id="weather-high-low" class="weather-metric-value">-- / --</strong>
+                </div>
+                <div class="weather-metric">
+                  <span class="weather-metric-label">Rain</span>
+                  <strong id="weather-rain" class="weather-metric-value">--</strong>
+                </div>
+                <div class="weather-metric">
+                  <span class="weather-metric-label">Sunrise</span>
+                  <strong id="weather-sunrise" class="weather-metric-value">--</strong>
+                </div>
+                <div class="weather-metric">
+                  <span class="weather-metric-label">Sunset</span>
+                  <strong id="weather-sunset" class="weather-metric-value">--</strong>
+                </div>
+              </div>
+
+              <div class="weather-meta">
+                <p id="weather-updated">Updated just now</p>
+                <p id="weather-wind">Wind: -- km/h</p>
+              </div>
+            </div>
+          </details>
+        </section>
         <p id="clock" class="clock-text">--:--:--</p>
         <button
           id="theme-toggle"
@@ -132,79 +191,42 @@
       <!-- ============================= SEARCH ============================= -->
       <!-- The form's action, query parameter, and placeholder are set by
            script.js from config.js, so they only need editing in one place. -->
-      <section id="search-section" class="search-section" aria-label="Web search">
-        <form id="search-form" class="search-form" role="search">
-          <label for="search-input" class="visually-hidden">Search the web</label>
+      <section id="search-section" class="search-section" aria-label="Search bookmarks or the web">
+        <form id="search-form" class="search-form" role="search" autocomplete="off">
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <label for="search-input" class="visually-hidden">Search bookmarks or the web</label>
           <input
             id="search-input"
             name="q"
             type="search"
             class="search-input"
-            placeholder="Search the web"
+            placeholder="Search bookmarks or the web"
             autocomplete="off"
+            aria-autocomplete="list"
+            aria-controls="search-results"
+            aria-expanded="false"
           />
-          <button type="submit" class="btn btn-primary search-submit" aria-label="Search the web">Search <span aria-hidden="true">↗</span></button>
+          <kbd class="search-shortcut" aria-label="Keyboard shortcut Command or Control K">⌘K</kbd>
+          <button type="submit" class="btn btn-primary search-submit" aria-label="Search bookmarks or the web">Go <span aria-hidden="true">↗</span></button>
         </form>
+        <div id="search-results" class="search-results" role="listbox" aria-label="Bookmark and web results" hidden></div>
       </section>
 
-      <div class="utility-grid">
-      <!-- ============================== WEATHER ============================= -->
-      <section id="weather-section" class="weather-section" aria-labelledby="weather-heading">
-        <div class="weather-card">
-          <div class="weather-head">
-            <div>
-              <p class="weather-label">Weather</p>
-              <h2 id="weather-heading" class="weather-city">London</h2>
-            </div>
-            <div class="weather-actions">
-              <label for="weather-location" class="visually-hidden">Select weather location</label>
-              <select id="weather-location" class="settings-input weather-select" aria-label="Select weather location"></select>
-              <button id="weather-refresh" class="btn btn-ghost" type="button">Refresh</button>
-            </div>
+      <!-- ========================= SHORTCUT GROUPS ========================= -->
+      <section id="shortcuts-section" class="shortcuts-section" aria-labelledby="shortcuts-heading">
+        <div class="section-heading-row">
+          <div>
+            <p class="section-eyebrow">Quick access</p>
+            <h2 id="shortcuts-heading" class="shortcuts-section-heading">Bookmarks</h2>
           </div>
-
-          <div class="weather-main">
-            <div class="weather-reading">
-              <p id="weather-temp" class="weather-temp">--°C</p>
-              <p id="weather-condition" class="weather-condition">Loading forecast…</p>
-            </div>
-            <span id="weather-icon" class="weather-icon" aria-hidden="true">☀️</span>
-          </div>
-
-          <div class="weather-metrics" aria-label="Weather details">
-            <div class="weather-metric">
-              <span class="weather-metric-label">Feels like</span>
-              <strong id="weather-feels-like" class="weather-metric-value">--</strong>
-            </div>
-            <div class="weather-metric">
-              <span class="weather-metric-label">Humidity</span>
-              <strong id="weather-humidity" class="weather-metric-value">--</strong>
-            </div>
-            <div class="weather-metric">
-              <span class="weather-metric-label">High / Low</span>
-              <strong id="weather-high-low" class="weather-metric-value">-- / --</strong>
-            </div>
-            <div class="weather-metric">
-              <span class="weather-metric-label">Rain</span>
-              <strong id="weather-rain" class="weather-metric-value">--</strong>
-            </div>
-            <div class="weather-metric">
-              <span class="weather-metric-label">Sunrise</span>
-              <strong id="weather-sunrise" class="weather-metric-value">--</strong>
-            </div>
-            <div class="weather-metric">
-              <span class="weather-metric-label">Sunset</span>
-              <strong id="weather-sunset" class="weather-metric-value">--</strong>
-            </div>
-          </div>
-
-          <div class="weather-meta">
-            <p id="weather-updated">Updated just now</p>
-            <p id="weather-wind">Wind: -- km/h</p>
-          </div>
+          <p class="section-hint">Hover a category or use its “more” button to see every link.</p>
+        </div>
+        <div id="shortcut-groups" class="shortcut-groups">
+          <!-- Shortcut group cards are rendered here by script.js from config.js -->
         </div>
       </section>
 
+      <div class="utility-grid">
       <!-- ============================== NOTES ============================== -->
       <section id="notes-section" class="notes-section" aria-labelledby="notes-heading">
         <div class="notes-card">
@@ -217,20 +239,12 @@
             id="notes-textarea"
             class="notes-textarea"
             placeholder="What matters most today?"
-            rows="6"
+            rows="3"
           ></textarea>
           <p id="notes-status" class="notes-status" aria-live="polite"></p>
         </div>
       </section>
       </div>
-
-      <!-- ========================= SHORTCUT GROUPS ========================= -->
-      <section id="shortcuts-section" class="shortcuts-section" aria-labelledby="shortcuts-heading">
-        <h2 id="shortcuts-heading" class="shortcuts-section-heading">Your spaces</h2>
-        <div id="shortcut-groups" class="shortcut-groups">
-          <!-- Shortcut group cards are rendered here by script.js from config.js -->
-        </div>
-      </section>
 
     </main>
 
